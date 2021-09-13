@@ -63,7 +63,8 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     robot_omega_(0),
     nav_complete_(true),
     nav_goal_loc_(0, 0),
-    nav_goal_angle_(0) {
+    nav_goal_angle_(0),
+    speed(0) {
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
   viz_pub_ = n->advertise<VisualizationMsg>("visualization", 1);
@@ -105,6 +106,19 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
                                    double time) {
   point_cloud_ = cloud;                                     
 }
+float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
+  x=velocity.x();
+  y=velocity.y();
+  speed= math.sqrt(x*x + y*y);
+  //determine acceleration
+  //maintain speed
+  //determine deceleration
+  return -1
+}
+float calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const Eigen::Vector2f& point_cloud_){
+
+  return -1
+}
 
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
@@ -115,7 +129,6 @@ void Navigation::Run() {
 
   // If odometry has not been initialized, we can't do anything.
   if (!odom_initialized_) return;
-
   // The control iteration goes here. 
   // Feel free to make helper functions to structure the control appropriately.
   
@@ -123,7 +136,8 @@ void Navigation::Run() {
 
   // Eventually, you will have to set the control values to issue drive commands:
   // drive_msg_.curvature = ...;
-  // drive_msg_.velocity = ...;
+
+  drive_msg_.velocity = 1.0;
 
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = ros::Time::now();
