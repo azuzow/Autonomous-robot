@@ -33,6 +33,7 @@
 #include "navigation.h"
 #include "visualization/visualization.h"
 
+
 using Eigen::Vector2f;
 using amrl_msgs::AckermannCurvatureDriveMsg;
 using amrl_msgs::VisualizationMsg;
@@ -109,15 +110,17 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
 float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
   x=velocity.x();
   y=velocity.y();
-  speed= math.sqrt(x*x + y*y);
+  speed= sqrt(x*x + y*y);
   //determine acceleration
   //maintain speed
   //determine deceleration
-  return -1
+  return -1;
 }
+
+
 float calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const Eigen::Vector2f& point_cloud_){
 
-  return -1
+  return -1;
 }
 
 void Navigation::Run() {

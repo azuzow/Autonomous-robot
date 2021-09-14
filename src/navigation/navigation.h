@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "eigen3/Eigen/Dense"
+#include <math.h> 
 
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
@@ -104,6 +105,9 @@ class Navigation {
   float speed;
   // previous velocity
   float previous_velocity;
+  float x;
+  float y;
+
 };
 
 }  // namespace navigation
