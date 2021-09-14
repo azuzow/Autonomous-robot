@@ -123,6 +123,14 @@ float calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const Eigen:
   return -1;
 }
 
+void Navigation::printStats(){
+ 
+ std::cout << "Velocity: " << robot_vel_ << std::endl;
+ std::cout << "Robot Location: " << robot_vel_ << std::endl;
+ std::cout << "Point Cloud Vector " << robot_vel_ << std::endl;
+
+}
+
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
   
@@ -141,6 +149,7 @@ void Navigation::Run() {
   // drive_msg_.curvature = ...;
 
   drive_msg_.velocity = 1.0;
+  printStats();
 
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = ros::Time::now();

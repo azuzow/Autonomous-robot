@@ -69,6 +69,9 @@ class Navigation {
   // Update speed by using current velocity
   float updateSpeed(const Eigen::Vector2f& velocity);
   float calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const Eigen::Vector2f& point_cloud_);
+
+ // output readings
+  void printStats();
   
  private:
 
