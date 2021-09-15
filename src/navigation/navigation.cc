@@ -144,13 +144,15 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   return max_speed;
   }
 
-float Navigation::calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const std::vector<Eigen::Vector2f>& point_cloud_){
-
-  return -1;
-}
-
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
+  std::cout << "Robot variables:" << robot_loc_ << robot_vel_ << robot_angle_ << std::endl;
+  if (point_cloud_set) std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
+  float distance = 0.0, angle = 0.0;
+  distance = Navigation::calculate_distance_to_target();
+  distance++; angle++; // Just to avoid errors
+  if (distance != 0) exit(0);
+  return;
 
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
@@ -158,13 +160,13 @@ void Navigation::Run() {
 
   // If odometry has not been initialized, we can't do anything.
   if (!odom_initialized_) return;
-  // The control iteration goes here. 
+  // The control iteration goes here.
   // Feel free to make helper functions to structure the control appropriately.
-  
+
   // The latest observed point cloud is accessible via "point_cloud_"
 
   // Eventually, you will have to set the control values to issue drive commands:
-  // drive_msg_.curvature = ...;
+  drive_msg_.curvature = 0;
 
   drive_msg_.velocity = 1;
 
