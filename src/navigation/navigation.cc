@@ -128,6 +128,8 @@ void Navigation::printStats(){
  std::cout << "Velocity: " << robot_vel_ << std::endl;
  std::cout << "Robot Location: " << robot_vel_ << std::endl;
  std::cout << "Point Cloud Vector " << robot_vel_ << std::endl;
+ // std::cout << " local_viz_msg_ : " << local_viz_msg_ << std::endl;
+  //std::cout << " global_viz_msg_ : " << global_viz_msg_ << std::endl;
 
 }
 
@@ -149,7 +151,10 @@ void Navigation::Run() {
   // drive_msg_.curvature = ...;
 
   drive_msg_.velocity = 1.0;
-  printStats();
+  //UpdateLocation(loc, angle);
+  //UpdateOdometry(loc,angle, robot_vel_, ang_vel);
+  //updateSpeed(velocity);
+  //printStats();
 
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = ros::Time::now();

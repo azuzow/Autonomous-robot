@@ -75,6 +75,14 @@ sensor_msgs::LaserScan last_laser_msg_;
 Navigation* navigation_ = nullptr;
 
 void LaserCallback(const sensor_msgs::LaserScan& msg) {
+  // printf("LaserScan");
+
+  int size = sizeof(msg.ranges);
+
+  for(int i =0; i < size ; i++)
+    printf("msg angle increment: %f \n", msg.angle_increment);
+  printf("msg angle max: %f", msg.angle_max);
+
   if (FLAGS_v > 0) {
     printf("Laser t=%f, dt=%f\n",
            msg.header.stamp.toSec(),
@@ -85,6 +93,11 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
 
   static vector<Vector2f> point_cloud_;
   // TODO Convert the LaserScan to a point cloud
+
+  //std::cout << "laserscan MSG : " << msg << std::endl;
+
+ 
+
   navigation_->ObservePointCloud(point_cloud_, msg.header.stamp.toSec());
   last_laser_msg_ = msg;
 }
