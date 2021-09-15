@@ -106,29 +106,29 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
 }
 
 void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
-  point_cloud_ = cloud;                                     
+  point_cloud_ = cloud;
 }
 
-  float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
+float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
   float x=velocity.x();
   float y=velocity.y();
   speed= sqrt(x*x + y*y);
-  float distance = calculate_distance_to_target(robot_loc_,point_cloud_);
+  float distance = calculate_distance_to_target();
   float stopping_point_x = 20;
   float stopping_point_y=0;
-  
+
   distance= sqrt(pow(robot_loc_.x()-stopping_point_x,2)+pow(robot_loc_.y()-stopping_point_y,2));
   std::cout<<speed<<std::endl;
-  
+
   float distance_ = speed*(1/20);
   distance=distance-distance_;
-  
+
   // time_needed_to_stop= (speed*speed)/max_deceleration_magnitude;
-  
+
   float distance_needed_to_stop= (speed*speed)/(2*max_deceleration_magnitude);
-  
+
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
-  
+
   float buffer_to_stop=1.0;
 
   // if (distance_needed_to_stop<=0.3){
