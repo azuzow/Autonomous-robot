@@ -20,6 +20,7 @@
 //========================================================================
 
 #include <vector>
+#include <iostream>
 
 #include "eigen3/Eigen/Dense"
 
@@ -67,8 +68,8 @@ class Navigation {
 
   // Update speed by using current velocity
   float updateSpeed(const Eigen::Vector2f& velocity);
-  float calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const Eigen::Vector2f& point_cloud_);
-  
+  float calculate_distance_to_target();
+
  private:
 
   // Whether odometry has been initialized.
@@ -93,7 +94,7 @@ class Navigation {
   float odom_start_angle_;
   // Latest observed point cloud.
   std::vector<Eigen::Vector2f> point_cloud_;
-
+  bool point_cloud_set;
   // Whether navigation is complete.
   bool nav_complete_;
   // Navigation goal location.

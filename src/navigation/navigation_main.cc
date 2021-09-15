@@ -85,6 +85,16 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
 
   static vector<Vector2f> point_cloud_;
   // TODO Convert the LaserScan to a point cloud
+
+  float angle_iter = msg.angle_min, range;
+  int i=0;
+  while (angle_iter <= msg.angle_max) {
+    range = msg.ranges.at(i);
+    point_cloud_.push_back( Vector2f { kLaserLoc[0] + range * cos(angle_iter), kLaserLoc[1] + range * sin(angle_iter) } );
+    i++;
+    angle_iter += msg.angle_increment;
+  }
+
   navigation_->ObservePointCloud(point_cloud_, msg.header.stamp.toSec());
   last_laser_msg_ = msg;
 }

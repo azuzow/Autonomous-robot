@@ -104,38 +104,52 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
 
 void Navigation::ObservePointCloud(const vector<Vector2f>& cloud,
                                    double time) {
-  point_cloud_ = cloud;                                     
+  point_cloud_ = cloud;
+  point_cloud_set = true;
 }
-float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
-  x=velocity.x();
-  y=velocity.y();
-  speed= math.sqrt(x*x + y*y);
-  //determine acceleration
-  //maintain speed
-  //determine deceleration
-  return -1
-}
-float calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const Eigen::Vector2f& point_cloud_){
 
-  return -1
+float Navigation::calculate_distance_to_target(){
+  std::cout << "Print in calculate_distance_to_target" << std::endl;
+  float min_distance = -1000000;
+  if (point_cloud_.size() == 0) return -1;
+  for (unsigned int i=0; i < point_cloud_.size(); i++)
+  {
+    std::cout << point_cloud_[0][0] << " " << point_cloud_[0][1] << std::endl;
+    float distance = sqrt( pow(point_cloud_[i][0], 2) + pow(point_cloud_[i][1], 2) );
+    float angle = point_cloud_[i][1] / point_cloud_[i][0];
+    std::cout << distance << " " << abs(angle) << std::endl;
+    if ( abs(angle - robot_angle_) < 0.05 )
+    {
+      std::cout << "D A " << distance << " " << angle << std::endl;
+      min_distance = distance;
+    }
+  }
+  return min_distance;
 }
 
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
-  
+  std::cout << "Robot variables:" << robot_loc_ << robot_vel_ << robot_angle_ << std::endl;
+  if (point_cloud_set) std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
+  float distance = 0.0, angle = 0.0;
+  distance = Navigation::calculate_distance_to_target();
+  distance++; angle++; // Just to avoid errors
+  if (distance != 0) exit(0);
+  return;
+
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
   visualization::ClearVisualizationMsg(global_viz_msg_);
 
   // If odometry has not been initialized, we can't do anything.
   if (!odom_initialized_) return;
-  // The control iteration goes here. 
+  // The control iteration goes here.
   // Feel free to make helper functions to structure the control appropriately.
-  
+
   // The latest observed point cloud is accessible via "point_cloud_"
 
   // Eventually, you will have to set the control values to issue drive commands:
-  // drive_msg_.curvature = ...;
+  drive_msg_.curvature = 0;
 
   drive_msg_.velocity = 1.0;
 
