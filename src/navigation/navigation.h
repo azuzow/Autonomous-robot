@@ -108,6 +108,8 @@ class Navigation {
   float max_speed;
   float max_acceleration_magnitude;
   float max_deceleration_magnitude;
+  // previous velocity
+  float previous_velocity;
 };
 
 }  // namespace navigation
