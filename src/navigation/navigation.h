@@ -69,7 +69,7 @@ class Navigation {
   // Update speed by using current velocity
   float updateSpeed(const Eigen::Vector2f& velocity);
 
-  float calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const std::vector<Eigen::Vector2f>& point_cloud_);
+  float calculate_distance_to_target();
 
  private:
 
@@ -108,6 +108,8 @@ class Navigation {
   float max_speed;
   float max_acceleration_magnitude;
   float max_deceleration_magnitude;
+  // previous velocity
+  float previous_velocity;
 };
 
 }  // namespace navigation

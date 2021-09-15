@@ -105,28 +105,48 @@ void Navigation::UpdateOdometry(const Vector2f& loc,
   odom_angle_ = angle;
 }
 
+
 void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   point_cloud_ = cloud;                                     
+}
+float Navigation::calculate_distance_to_target(){
+  // std::cout << "Print in calculate_distance_to_target" << std::endl;
+  float min_distance = -1000000;
+  if (point_cloud_.size() == 0) return -1;
+  for (unsigned int i=0; i < point_cloud_.size(); i++)
+  {
+    // std::cout << point_cloud_[0][0] << " " << point_cloud_[0][1] << std::endl;
+    float distance = sqrt( pow(point_cloud_[i][0], 2) + pow(point_cloud_[i][1], 2) );
+    float angle = point_cloud_[i][1] / point_cloud_[i][0];
+    // std::cout << distance << " " << abs(angle) << std::endl;
+    if ( abs(angle - robot_angle_) < 0.05 )
+    {
+      // std::cout << "D A " << distance << " " << angle << std::endl;
+      min_distance = distance;
+    }
+  }
+  return min_distance;
 }
 
   float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
   float x=velocity.x();
   float y=velocity.y();
   speed= sqrt(x*x + y*y);
-  float distance = calculate_distance_to_target(robot_loc_,point_cloud_);
-  float stopping_point_x = 20;
-  float stopping_point_y=0;
+  float distance = calculate_distance_to_target();
+
   
-  distance= sqrt(pow(robot_loc_.x()-stopping_point_x,2)+pow(robot_loc_.y()-stopping_point_y,2));
-  std::cout<<speed<<std::endl;
+  // std::cout<<speed<<std::endl;
   
-  float distance_ = speed*(1/20);
-  distance=distance-distance_;
-  
+  float latency = speed*(1/20);
+          std::cout<<"==================="<<std::endl;
+  std::cout<<"latency "<<latency<<std::endl;
+  distance=distance-latency;
+   std::cout<<"distance remaining "<<distance<<std::endl;
   // time_needed_to_stop= (speed*speed)/max_deceleration_magnitude;
-  
+
   float distance_needed_to_stop= (speed*speed)/(2*max_deceleration_magnitude);
-  
+     std::cout<<"distance needed to stop "<<distance_needed_to_stop<<std::endl;
+        std::cout<<"==================="<<std::endl;
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
   
   float buffer_to_stop=1.0;
@@ -134,25 +154,26 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   // if (distance_needed_to_stop<=0.3){
   //   return 0;
   // }
-  if (distance_needed_to_stop<=(distance+buffer_to_stop)){
+  if (distance_needed_to_stop>=(distance+buffer_to_stop)){
     // decelerate
 
-  return -max_deceleration_magnitude;
+  return -max_deceleration_magnitude-5;
   }
 
   // otherwise keep going max speed
   return max_speed;
   }
 
+
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
-  std::cout << "Robot variables:" << robot_loc_ << robot_vel_ << robot_angle_ << std::endl;
-  if (point_cloud_set) std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
+  // std::cout << "Robot variables:" << robot_loc_ << robot_vel_ << robot_angle_ << std::endl;
+  // if (point_cloud_set) {std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
+  // }
+
   float distance = 0.0, angle = 0.0;
   distance = Navigation::calculate_distance_to_target();
   distance++; angle++; // Just to avoid errors
-  if (distance != 0) exit(0);
-  return;
 
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
@@ -168,7 +189,7 @@ void Navigation::Run() {
   // Eventually, you will have to set the control values to issue drive commands:
   drive_msg_.curvature = 0;
 
-  drive_msg_.velocity = 1;
+  drive_msg_.velocity = updateSpeed(robot_vel_);
 
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = ros::Time::now();
