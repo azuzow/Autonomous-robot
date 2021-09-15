@@ -67,8 +67,8 @@ class Navigation {
 
   // Update speed by using current velocity
   float updateSpeed(const Eigen::Vector2f& velocity);
-  float calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const Eigen::Vector2f& point_cloud_);
-  
+  float calculate_distance_to_target(const Eigen::Vector2f& robot_loc,const std::vector<Eigen::Vector2f>& point_cloud_);
+
  private:
 
   // Whether odometry has been initialized.
@@ -102,8 +102,10 @@ class Navigation {
   float nav_goal_angle_;
   // speed calculated from velocity
   float speed;
-  // previous velocity
-  float previous_velocity;
+  //cruise speed
+  float max_speed;
+  float max_acceleration_magnitude;
+  float max_deceleration_magnitude;
 };
 
 }  // namespace navigation
