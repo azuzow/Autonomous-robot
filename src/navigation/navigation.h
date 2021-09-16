@@ -71,6 +71,12 @@ class Navigation {
 
   float calculate_distance_to_target();
 
+  Eigen::Vector2f get_robot_loc();
+
+  float get_robot_angle();
+
+  void updatePointCloudToGlobalFrame();
+
  private:
 
   // Whether odometry has been initialized.

@@ -83,20 +83,25 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
   // Location of the laser on the robot. Assumes the laser is forward-facing.
   const Vector2f kLaserLoc(0.2, 0);
 
+
   static vector<Vector2f> point_cloud_;
   // TODO Convert the LaserScan to a point cloud
 
+
+  point_cloud_.clear();
+
   float angle_iter = msg.angle_min, range;
   int i=0;
+
   while (angle_iter <= msg.angle_max) {
     range = msg.ranges.at(i);
-    point_cloud_.push_back( Vector2f { kLaserLoc[0] + range * cos(angle_iter), kLaserLoc[1] + range * sin(angle_iter) } );
+    point_cloud_.push_back( Vector2f { kLaserLoc[0] + range * cos(angle_iter), kLaserLoc[1] + range * sin(angle_iter)} );
     i++;
     angle_iter += msg.angle_increment;
   }
-
   navigation_->ObservePointCloud(point_cloud_, msg.header.stamp.toSec());
   last_laser_msg_ = msg;
+
 }
 
 void OdometryCallback(const nav_msgs::Odometry& msg) {
@@ -131,6 +136,7 @@ void LocalizationCallback(const amrl_msgs::Localization2DMsg msg) {
   if (FLAGS_v > 0) {
     printf("Localization t=%f\n", GetWallTime());
   }
+
   navigation_->UpdateLocation(Vector2f(msg.pose.x, msg.pose.y), msg.pose.theta);
 }
 
