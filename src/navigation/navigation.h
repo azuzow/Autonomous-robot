@@ -19,6 +19,17 @@
 */
 //========================================================================
 
+
+
+
+/*
+Acutal width and length of the car:
+width: 21 cm
+length: 47 cm
+
+*/
+
+
 #include <vector>
 #include <iostream>
 
@@ -69,6 +80,9 @@ class Navigation {
   // Update speed by using current velocity
   float updateSpeed(const Eigen::Vector2f& velocity);
 
+  void DrawCar();
+
+  // Draw car
   float calculate_distance_to_target();
 
   Eigen::Vector2f get_robot_loc();
@@ -83,6 +97,11 @@ class Navigation {
   float min_curve = -M_PI_2;
   //max = pi/2
   float max_curve = M_PI_2;
+
+  float car_length = 0.47;
+  float car_width = 0.21;
+  float car_base_length = 0.35;
+  float margin = 0.1;
 
   bool check_if_collision(const float curvature,const Eigen::Vector2f& target_point, const float inner_radius,const float outer_radius);
 

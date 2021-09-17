@@ -66,5 +66,3 @@ void InitializeMarker(
 }
 
 }  // namespace gui_helpers
-
-

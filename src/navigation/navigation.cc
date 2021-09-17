@@ -194,7 +194,7 @@ void Navigation::updatePointCloudToGlobalFrame(){
 }
 
 
-
+// Change this function to give if collision is in innner part or outer part
 bool Navigation::check_if_collision(const float curvature, const Eigen::Vector2f& target_point, const float inner_radius, const float outer_radius){
   float x= 0;
   float y=1/curvature;
@@ -203,12 +203,40 @@ bool Navigation::check_if_collision(const float curvature, const Eigen::Vector2f
   float target_y=target_point.y();
   float distance_from_center = sqrt(pow((x-target_x),2) + pow((y-target_y),2));
   return( (distance_from_center>inner_radius) && distance_from_center<outer_radius);
+  /*
 
+  */
 }
 
+/*
+// bool check_for_all_points(){
+    find inner radius and outer radius
+//  iterate over all points in  point clouds
+//      pass it to check_if_collision function(curvature, point in point cloud, inner radius, outer radius)
+//      if any of them return true, then return true.
+// }
+*/
 
 
+/*
 
+*/
+
+
+void Navigation::DrawCar()
+{
+  Eigen::Vector2f front_left = Vector2f( car_base_length + (car_length - car_base_length) / 2 + margin, car_width/2 + margin );
+  Eigen::Vector2f back_left = Vector2f( - (car_length - car_base_length) / 2 - margin, car_width/2 + margin );
+
+  Eigen::Vector2f front_right = Vector2f( car_base_length + (car_length - car_base_length) / 2 + margin, -car_width/2 - margin );
+  Eigen::Vector2f back_right = Vector2f( - (car_length - car_base_length) / 2 - margin, -car_width/2 - margin );
+
+  visualization::DrawLine( front_left, back_left, 0x32a852,local_viz_msg_);
+  visualization::DrawLine( front_right, back_right, 0x32a852,local_viz_msg_);
+
+  visualization::DrawLine( front_left, front_right, 0x32a852,local_viz_msg_);
+  visualization::DrawLine( back_left, back_right, 0x32a852,local_viz_msg_);
+}
 
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
@@ -235,7 +263,8 @@ void Navigation::Run() {
 
   // updatePointCloudToGlobalFrame();
   std::cout<<"robot location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
-  visualization::DrawArc(robot_loc_,3,0,1,0x32a852,local_viz_msg_);
+  visualization::DrawCross(robot_loc_, 3, 0x32a852,local_viz_msg_);
+  DrawCar();
   drive_msg_.velocity = updateSpeed(robot_vel_);
   // std::cout<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
 
@@ -251,6 +280,7 @@ void Navigation::Run() {
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
   drive_pub_.publish(drive_msg_);
+  exit(0);
 }
 
 }  // namespace navigation
