@@ -202,9 +202,14 @@ bool Navigation::check_if_collision(const float curvature, const Eigen::Vector2f
   float target_x=target_point.x();
   float target_y=target_point.y();
   float distance_from_center = sqrt(pow((x-target_x),2) + pow((y-target_y),2));
-  return(distance_from_center>inner_radius and distance_from_center<outer_radius);
+  return( (distance_from_center>inner_radius) && distance_from_center<outer_radius);
 
 }
+
+
+
+
+
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
 
