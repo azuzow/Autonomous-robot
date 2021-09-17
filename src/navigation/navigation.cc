@@ -123,24 +123,19 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
 }
 
 float Navigation::calculate_distance_to_target(){
-  std::cout << "Print in calculate_distance_to_target" << point_cloud_.size() << std::endl;
-  float min_distance = -1000000, min_angle=10000;
+  float min_distance = -1000000;
   if (point_cloud_.size() == 0) return -1;
+
   for (unsigned int i=0; i < point_cloud_.size(); i++)
   {
-    // std::cout << point_cloud_[i][0] << " " << point_cloud_[i][1] << std::endl;
     float distance = sqrt( pow(point_cloud_[i][0], 2) + pow(point_cloud_[i][1], 2) );
-    float angle = atan( (point_cloud_[i][1] ) / (point_cloud_[i][0] ) );
-    // std::cout << distance << " " << angle << " " << robot_angle_ << std::endl;
-    // exit(0);
-    if ( abs(point_cloud_[i][1]) < 0.001 )
+
+    if ( abs(point_cloud_[i][1]) < 0.001 ) // Checking if i-th point is in straight line or not.
     {
-      std::cout << "D A " << distance << " " << angle << " " << i << std::endl;
+      std::cout << "Information about minimum point: Distance " << distance << " index: " << i << std::endl;
       min_distance = distance;
-      min_angle = angle;
     }
   }
-  std::cout << robot_loc_ << robot_angle_ << " " <<  min_angle << " " << min_distance << std::endl;
   return min_distance;
 }
 
@@ -215,16 +210,11 @@ void Navigation::Run() {
   // Eventually, you will have to set the control values to issue drive commands:
   drive_msg_.curvature = 0;
 
-  std::cout << "Robot variables:" << robot_loc_ << robot_vel_ << robot_angle_ << std::endl;
+  std::cout << "Robot variables:" << robot_loc_ << "\n Robot velocity: " << robot_vel_ << robot_angle_ << std::endl;
   // if (point_cloud_set) {std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
   // }
 
-  float distance = 0.0, angle = 0.0;
-  // distance = Navigation::calculate_distance_to_target();
-  distance++; angle++; // Just to avoid errors
-
   // updatePointCloudToGlobalFrame();
-  // exit(0);
   drive_msg_.velocity = updateSpeed(robot_vel_);
   // std::cout<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
 
