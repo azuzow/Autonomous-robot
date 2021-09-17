@@ -177,7 +177,7 @@ float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
   }
 
 
-<<<<<<< HEAD
+
 void Navigation::updatePointCloudToGlobalFrame(){
   float x_p, y_p;
   unsigned int i;
@@ -195,15 +195,15 @@ void Navigation::updatePointCloudToGlobalFrame(){
 
 
 
-void Navigation::check_if_collision(const float curvature,const Eigen::Vector2f& target_point, const float inner_radius,const float outer_radius){
-  x= 0
-  y=1/curvature
+bool Navigation::check_if_collision(const float curvature, const Eigen::Vector2f& target_point, const float inner_radius, const float outer_radius){
+  float x= 0;
+  float y=1/curvature;
   // NOT SURE IF CENTER OF CIRCLE IS ALWAYS (0,R)
-  target_x=target_point.x();
-  target_y=target_point.y();
-  distance_from_center = sqrt(pow((x-target_x),2) + pow((y-target_y),2));
+  float target_x=target_point.x();
+  float target_y=target_point.y();
+  float distance_from_center = sqrt(pow((x-target_x),2) + pow((y-target_y),2));
   return(distance_from_center>inner_radius and distance_from_center<outer_radius);
-  
+
 }
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
