@@ -71,6 +71,14 @@ class Navigation {
 
   float calculate_distance_to_target();
 
+  // returns all possible paths the car might take
+  void initialize_trajectories(const float curvature, const float distance, const float clearance);
+  //min = -pi/2
+  float min_curve = -M_PI_2
+  //max = pi/2
+  float min_curve = M_PI_2
+
+  bool check_if_collision(const float curvature,const Eigen::Vector2f& target_point, const float inner_radius,const float outer_radius);
  private:
 
   // Whether odometry has been initialized.

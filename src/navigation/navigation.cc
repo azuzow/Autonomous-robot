@@ -48,7 +48,7 @@ ros::Publisher viz_pub_;
 VisualizationMsg local_viz_msg_;
 VisualizationMsg global_viz_msg_;
 AckermannCurvatureDriveMsg drive_msg_;
-VisualizationMsg viz_curve_msg;
+
 // Epsilon value for handling limited numerical precision.
 const float kEpsilon = 1e-5;
 } //namespace
@@ -77,7 +77,7 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
   global_viz_msg_ = visualization::NewVisualizationMessage(
       "map", "navigation_global");
   InitRosHeader("base_link", &drive_msg_.header);
-  // viz_curve_msg= visualization::NewVisualizationMessage("trajectory", "local_trajectory");
+
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
@@ -168,6 +168,16 @@ float Navigation::calculate_distance_to_target(){
   }
 
 
+void Navigation::check_if_collision(const float curvature,const Eigen::Vector2f& target_point, const float inner_radius,const float outer_radius){
+  x= 0
+  y=1/curvature
+  // NOT SURE IF CENTER OF CIRCLE IS ALWAYS (0,R)
+  target_x=target_point.x();
+  target_y=target_point.y();
+  distance_from_center = sqrt(pow((x-target_x),2) + pow((y-target_y),2));
+  return(distance_from_center>inner_radius and distance_from_center<outer_radius);
+  
+}
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
 
@@ -175,39 +185,37 @@ void Navigation::Run() {
   // if (point_cloud_set) {std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
   // }
 
-  float distance = 0.0, angle = 0.0;
-  distance = Navigation::calculate_distance_to_target();
-  distance++; angle++; // Just to avoid errors
-
+  // float distance = 0.0, angle = 0.0;
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
   visualization::ClearVisualizationMsg(global_viz_msg_);
-  // visualization::ClearVisualizationMsg(viz_curve_msg);
+
   // If odometry has not been initialized, we can't do anything.
   if (!odom_initialized_) return;
   // The control iteration goes here.
   // Feel free to make helper functions to structure the control appropriately.
 
-  // The latest observed point cloud is accessible via "point_cloud_"
+  // The latest observed point cloud is accessible via "point_clouds_"
 
   // Eventually, you will have to set the control values to issue drive commands:
+  // curvature=0;
   drive_msg_.curvature = 0;
-
+  std::cout<<"robot location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
+  visualization::DrawArc(robot_loc_,3,0,1,0x32a852,local_viz_msg_);
   drive_msg_.velocity = updateSpeed(robot_vel_);
   std::cout<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
 
   
 
-  // visualization::DrawPathOption(M_PI/2,5,3,viz_curve_msg);
+
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = ros::Time::now();
   global_viz_msg_.header.stamp = ros::Time::now();
-  // viz_curve_msg.header.stamp = ros::Time::now();
+
   drive_msg_.header.stamp = ros::Time::now();
   // Publish messages.
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
-  viz_pub_.publish(viz_curve_msg);
   drive_pub_.publish(drive_msg_);
 }
 
