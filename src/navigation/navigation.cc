@@ -130,9 +130,9 @@ float Navigation::calculate_distance_to_target(){
   {
     float distance = sqrt( pow(point_cloud_[i][0], 2) + pow(point_cloud_[i][1], 2) );
 
-    if ( abs(point_cloud_[i][1]) < 0.001 ) // Checking if i-th point is in straight line or not.
+    if ( abs(point_cloud_[i][1]) < car_length + margin ) // Checking if i-th point is in straight line or not.
     {
-      std::cout << "Information about minimum point: Distance " << distance << " index: " << i << std::endl;
+      // std::cout << "Information about minimum point: Distance " << distance << " index: " << i << std::endl;
       min_distance = distance;
     }
   }
@@ -217,6 +217,40 @@ float Navigation::findNearestPoint(float curvature, float theta){
 
 
 
+  Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations)
+  {
+
+    previous_velocities.push_back(robot_vel_);
+    previous_locations.push_back(robot_loc_);
+    previous_omegas.push_back(robot_omega_);
+    previous_speeds.push_back(speed);
+    previous_angles.push_back(robot_angle_);
+
+    Eigen::Vector2f predicted_location(robot_loc_);
+
+    if (previous_omegas.size()>iterations){
+      previous_omegas.pop_front();
+      previous_locations.pop_front();
+      previous_velocities.pop_front();
+      previous_speeds.pop_front();
+      previous_angles.pop_front();
+    }
+
+    if (previous_omegas.size()== iterations){
+    for (unsigned int i=0; i < iterations; i++)
+    {
+      predicted_location.x()= predicted_location.x()+ previous_speeds[i] * cos( previous_angles[i] )/20;
+      predicted_location.y()= predicted_location.y() + previous_speeds[i] * sin( previous_angles[i] )/20;
+    }
+    // predicted_location=predicted_location*latency;
+    std::cout<<"predicted_location"<<predicted_location.x()<<" "<<predicted_location.y()<<std::endl;
+    std::cout<<"actual location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
+    }
+    visualization::DrawCross(robot_loc_, 0.4, 0x32a852,global_viz_msg_);
+    visualization::DrawCross(predicted_location, 0.2, 0xFF0000 ,global_viz_msg_);
+    return predicted_location;
+  }
+
 
 void Navigation::updatePointCloudToGlobalFrame(){
   float x_p, y_p;
@@ -235,27 +269,85 @@ void Navigation::updatePointCloudToGlobalFrame(){
 
 
 // Change this function to give if collision is in innner part or outer part
-bool Navigation::check_if_collision(const float curvature, const Eigen::Vector2f& target_point, const float inner_radius, const float outer_radius){
+float Navigation::check_if_collision(float curvature, Eigen::Vector2f& target_point, float inner_radius, float mid_radius, float outer_radius)
+{
+  // Returns 0 if no collision, 1 if collision on inner side of car, 2 if collision is on outer side of circle
   float x= 0;
   float y=1/curvature;
   // NOT SURE IF CENTER OF CIRCLE IS ALWAYS (0,R)
-  float target_x=target_point.x();
-  float target_y=target_point.y();
+  float target_x=target_point[0];
+  float target_y=target_point[0];
   float distance_from_center = sqrt(pow((x-target_x),2) + pow((y-target_y),2));
-  return( (distance_from_center>inner_radius) && distance_from_center<outer_radius);
-  /*
-
-  */
+  if ( (distance_from_center<inner_radius) || (distance_from_center>outer_radius) )
+  {
+    return 0;
+  }
+  else if ( (distance_from_center >= inner_radius) || (distance_from_center <= mid_radius) )
+  {
+    return 1;
+  }
+  else if ( (distance_from_center >= mid_radius) || (distance_from_center <= outer_radius) )
+  {
+    return 2;
+  }
+  else
+  {
+    printf("Error in comparing distances");
+    exit(0);
+    return -1;
+  }
 }
 
-/*
-// bool check_for_all_points(){
-    find inner radius and outer radius
-//  iterate over all points in  point clouds
-//      pass it to check_if_collision function(curvature, point in point cloud, inner radius, outer radius)
-//      if any of them return true, then return true.
-// }
-*/
+
+float Navigation::findFreePathLengthAlongACurvature(float curvature){
+      //   find inner radius and outer radius
+    float r=1/curvature;
+    float inner_radius = r - car_width/2 - margin;
+    float outer_radius = sqrt( pow( r+ margin + car_width/2, 2) + pow( car_base_length + (car_length - car_base_length)/2 + margin, 2 ) );
+    float mid_radius = sqrt( pow( r - car_width/2 - margin , 2) + pow( car_base_length + (car_length - car_base_length)/2 + margin, 2 ) );
+    float collision = 0, collision_point_angle, total_angle, free_path_angle, free_path_length, min_free_path_length;
+    float x, y;
+    min_free_path_length = 1000000;
+    for (unsigned int i=0; i < point_cloud_.size(); i++)
+    {
+      x = point_cloud_[i][0], y = point_cloud_[i][1];
+      if( y * r < 0 )
+      {
+        // point on opposite side of turning
+        continue;
+      }
+      if (x < 0) continue; // points with angle>pi/2
+      collision = check_if_collision(curvature, point_cloud_[i], inner_radius, mid_radius, outer_radius);
+      if( collision == 0)
+      {
+        // No collision
+        continue;
+      }
+      else if(collision == 1)
+      {
+        //inner collision
+        collision_point_angle = acos( (( r - car_width/2 - margin ) / ( sqrt( pow(x, 2) + pow( y - r, 2 ) ) ) ) );
+        total_angle = acos( ( (y-r)*(y-r) + r*r - y*y ) / ( 2*sqrt( x*x + (y-r)*(y-r) )*abs(r) ) );
+        free_path_angle = total_angle - collision_point_angle;
+        free_path_length = free_path_angle * r;
+        min_free_path_length = std::min( min_free_path_length, free_path_length );
+      }
+      else if(collision == 2)
+      {
+        //outer collision
+        collision_point_angle = asin( ( ( car_base_length + ( car_length  - car_base_length )/2 + margin ) / ( sqrt( pow( x, 2 ) + pow( y - r, 2 ) ) ) ) );
+        total_angle = acos( ( (y-r)*(y-r) + r*r - y*y ) / ( 2*sqrt( x*x + (y-r)*(y-r) )*abs(r) ) );
+        free_path_angle = total_angle - collision_point_angle;
+        free_path_length = free_path_angle * r;
+        min_free_path_length = std::min( min_free_path_length, free_path_length );
+      }
+      // std::cout << "Minimum free path length" << min_free_path_length << " " <<  collision << " " << point_cloud_[i] << " " << i << " " << collision_point_angle << " " << total_angle << std::endl;
+    }
+    std::cout << "Minimum free path length" << min_free_path_length << std::endl;
+    // if (min_free_path_length < 0)
+    return min_free_path_length;
+}
+
 
 
 /*
@@ -285,6 +377,14 @@ void Navigation::DrawCar()
   visualization::DrawLine( back_left, back_right, 0x32a852,local_viz_msg_);
 }
 
+
+float Navigation::findBestCurvature()
+{
+  float best_curvature = 1;
+  findFreePathLengthAlongACurvature(best_curvature);
+  return best_curvature;
+}
+
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
 
@@ -295,6 +395,11 @@ void Navigation::Run() {
 
   // If odometry has not been initialized, we can't do anything.
   if (!odom_initialized_) return;
+
+  Eigen::Vector2f test_cross1 = Vector2f( 1, 1 );
+  Eigen::Vector2f test_cross2 = Vector2f( 2, 2 );
+
+  visualization::DrawLine( test_cross1, test_cross2, 0x32a852, local_viz_msg_);
   // The control iteration goes here.
   // Feel free to make helper functions to structure the control appropriately.
 
@@ -302,9 +407,11 @@ void Navigation::Run() {
 
   // Eventually, you will have to set the control values to issue drive commands:
   // curvature=0;
-  drive_msg_.curvature = 0;
+  latency_compensation(0.3, 6);
+  drive_msg_.curvature = findBestCurvature();
 
   std::cout << "Robot variables:" << robot_loc_ << "\n Robot velocity: " << robot_vel_ << robot_angle_ << std::endl;
+  std::cout << "Odom variables:" << odom_loc_ << "\n Odom angle: "  << odom_angle_ << "\n Odom start angle:" << odom_start_angle_ << odom_start_loc_ << std::endl;
   // if (point_cloud_set) {std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
   // }
 
@@ -327,6 +434,7 @@ void Navigation::Run() {
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
   drive_pub_.publish(drive_msg_);
+  // exit(0);
 }
 
 }  // namespace navigation

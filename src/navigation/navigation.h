@@ -32,6 +32,7 @@ length: 47 cm
 
 #include <vector>
 #include <iostream>
+#include<deque>
 
 #include "eigen3/Eigen/Dense"
 
@@ -111,9 +112,15 @@ class Navigation {
   float car_length = 0.47;
   float car_width = 0.21;
   float car_base_length = 0.35;
-  float margin = 0.1;
+  float margin = 0.2;
 
-  bool check_if_collision(const float curvature,const Eigen::Vector2f& target_point, const float inner_radius,const float outer_radius);
+  float check_if_collision(float curvature, Eigen::Vector2f& target_point, float inner_radius, float mid_radius, float outer_radius);
+
+  float findFreePathLengthAlongACurvature(float curvature);
+
+  float findBestCurvature();
+
+  Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
 
  private:
 
@@ -154,6 +161,11 @@ class Navigation {
   float max_deceleration_magnitude;
   // previous velocity
   float previous_velocity;
+  std::deque<float> previous_speeds;
+  std::deque<Eigen::Vector2f> previous_velocities;
+  std::deque<Eigen::Vector2f> previous_locations;
+  std::deque<float> previous_omegas;
+  std::deque<float> previous_angles;
 };
 
 }  // namespace navigation
