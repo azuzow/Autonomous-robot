@@ -130,7 +130,7 @@ float Navigation::calculate_distance_to_target(){
   {
     float distance = sqrt( pow(point_cloud_[i][0], 2) + pow(point_cloud_[i][1], 2) );
 
-    if ( abs(point_cloud_[i][1]) < 0.001 ) // Checking if i-th point is in straight line or not.
+    if ( abs(point_cloud_[i][1]) < car_length + margin ) // Checking if i-th point is in straight line or not.
     {
       std::cout << "Information about minimum point: Distance " << distance << " index: " << i << std::endl;
       min_distance = distance;
