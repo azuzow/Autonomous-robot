@@ -132,7 +132,7 @@ float Navigation::calculate_distance_to_target(){
 
     if ( abs(point_cloud_[i][1]) < car_length + margin ) // Checking if i-th point is in straight line or not.
     {
-      std::cout << "Information about minimum point: Distance " << distance << " index: " << i << std::endl;
+      // std::cout << "Information about minimum point: Distance " << distance << " index: " << i << std::endl;
       min_distance = distance;
     }
   }
@@ -177,13 +177,14 @@ float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
   }
 
 
-  Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations){
-    latency_compensation(0.3, 6);
+  Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations)
+  {
 
     previous_velocities.push_back(robot_vel_);
     previous_locations.push_back(robot_loc_);
     previous_omegas.push_back(robot_omega_);
     previous_speeds.push_back(speed);
+    previous_angles.push_back(robot_angle_);
 
     Eigen::Vector2f predicted_location(robot_loc_);
 
@@ -192,22 +193,23 @@ float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
       previous_locations.pop_front();
       previous_velocities.pop_front();
       previous_speeds.pop_front();
+      previous_angles.pop_front();
     }
 
     if (previous_omegas.size()== iterations){
     for (unsigned int i=0; i < iterations; i++)
     {
-      predicted_location.x()= predicted_location.x()+(1/curvature)*cos(previous_velocities[i].x()*latency);
-      predicted_location.y()= predicted_location.y()+(1/curvature)*sin(previous_velocities[i].y()*latency);
+      predicted_location.x()= predicted_location.x()+ previous_speeds[i] * cos( previous_angles[i] )/20;
+      predicted_location.y()= predicted_location.y() + previous_speeds[i] * sin( previous_angles[i] )/20;
     }
     // predicted_location=predicted_location*latency;
     std::cout<<"predicted_location"<<predicted_location.x()<<" "<<predicted_location.y()<<std::endl;
     std::cout<<"actual location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
     }
-    visualization::DrawCross(predicted_location, 0.4, 0x32a852,global_viz_msg_);
-  return predicted_location;
+    visualization::DrawCross(robot_loc_, 0.4, 0x32a852,global_viz_msg_);
+    visualization::DrawCross(predicted_location, 0.2, 0xFF0000 ,global_viz_msg_);
+    return predicted_location;
   }
-
 
 
 void Navigation::updatePointCloudToGlobalFrame(){
@@ -302,7 +304,7 @@ float Navigation::findFreePathLengthAlongACurvature(float curvature){
       // std::cout << "Minimum free path length" << min_free_path_length << " " <<  collision << " " << point_cloud_[i] << " " << i << " " << collision_point_angle << " " << total_angle << std::endl;
     }
     std::cout << "Minimum free path length" << min_free_path_length << std::endl;
-    if (min_free_path_length < 0)
+    // if (min_free_path_length < 0)
     return min_free_path_length;
 }
 
@@ -338,7 +340,7 @@ void Navigation::DrawCar()
 
 float Navigation::findBestCurvature()
 {
-  float best_curvature = 0.5;
+  float best_curvature = 0;
   findFreePathLengthAlongACurvature(best_curvature);
   return best_curvature;
 }
@@ -360,6 +362,7 @@ void Navigation::Run() {
 
   // Eventually, you will have to set the control values to issue drive commands:
   // curvature=0;
+  latency_compensation(0.3, 6);
   drive_msg_.curvature = findBestCurvature();
 
   std::cout << "Robot variables:" << robot_loc_ << "\n Robot velocity: " << robot_vel_ << robot_angle_ << std::endl;

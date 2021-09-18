@@ -155,7 +155,7 @@ class Navigation {
   std::deque<Eigen::Vector2f> previous_velocities;
   std::deque<Eigen::Vector2f> previous_locations;
   std::deque<float> previous_omegas;
-
+  std::deque<float> previous_angles;
 };
 
 }  // namespace navigation
