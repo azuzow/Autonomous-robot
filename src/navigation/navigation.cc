@@ -195,8 +195,8 @@ float Navigation::findNearestPoint(float curvature){
   float radius = 1 /curvature;
 
   float minimumDistance = 10000;
-  innerRadius = .5 * radius
-  outerRadius = 1.5 * radius
+  float innerRadius = .5 * radius;
+  float outerRadius = 1.5 * radius;
 
     for(unsigned int = 0; i < point_cloud_.size(); i++){
         float isInsideRange = check_if_collision(curvature, point_cloud_[i], innerRadius, outerRadius);
