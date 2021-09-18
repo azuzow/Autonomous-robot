@@ -176,6 +176,29 @@ float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
   return max_speed;
   }
 
+  //Distnace of  point from curvature is equal to the difference of the distance of the point from origin and the radius of curvature
+float Navigation::findDistanceofPointfromCurve(float x, float y, float curvature){
+  float radius = 1 / curvature;
+  //use difference of distance formula of point from origin and radius to find distance of point from curve
+  return abs(sqrt(pow(x,2) + pow(y,2)) - radius);
+}
+
+// find nearest point in point cloud
+Eigen::Vector2f Navigation::findNearestPoint(float curvature){
+  if (point_cloud_.size() == 0) return {};
+  Eigen::Vector2f nearestPoint;
+  float minimumDistance = 10000;
+    for(unsigned int = 0; i < point_cloud_.size(); i++){
+        float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
+        if(distance < minimumDistance){
+            minimumDistance = distance;
+            nearestPoint.x = point_cloud_[i][0];
+            nearestPoint.y = point_cloud_[i][1];
+    }
+  }
+  return nearestPoint;
+}
+
 
 
 void Navigation::updatePointCloudToGlobalFrame(){

@@ -91,6 +91,10 @@ class Navigation {
 
   void updatePointCloudToGlobalFrame();
 
+  float findDistanceofPointfromCurve(float x, float y, float curvature);
+
+  Eigen::Vector2f findNearestPoint(float curvature)
+
   // returns all possible paths the car might take
   void initialize_trajectories(const float curvature, const float distance, const float clearance);
   //min = -pi/2
