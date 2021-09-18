@@ -184,9 +184,9 @@ float Navigation::findDistanceofPointfromCurve(float x, float y, float curvature
 }
 
 bool Navigation::isClockwise(float x, float y){
-float counterX = - y; 
-float counterY = x;
-return (-x * counterY + y * counterX > 0);
+  float counterX = - y;
+  float counterY = x;
+  return (-x * counterY + y * counterX > 0);
 }
 
 // find nearest point in point cloud
@@ -217,9 +217,8 @@ float Navigation::findNearestPoint(float curvature){
 
 
 
-  Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations)
-  {
-
+Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations)
+{
     previous_velocities.push_back(robot_vel_);
     previous_locations.push_back(robot_loc_);
     previous_omegas.push_back(robot_omega_);
@@ -249,10 +248,11 @@ float Navigation::findNearestPoint(float curvature){
     visualization::DrawCross(robot_loc_, 0.4, 0x32a852,global_viz_msg_);
     visualization::DrawCross(predicted_location, 0.2, 0xFF0000 ,global_viz_msg_);
     return predicted_location;
-  }
+}
 
 
-void Navigation::updatePointCloudToGlobalFrame(){
+void Navigation::updatePointCloudToGlobalFrame()
+{
   float x_p, y_p;
   unsigned int i;
   for (i=0; i < point_cloud_.size(); i++)
