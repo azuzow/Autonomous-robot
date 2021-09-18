@@ -205,8 +205,8 @@ float Navigation::findNearestPoint(float curvature, float angle){
             float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
             if(distance < minimumDistance){
               minimumDistance = distance;
-              nearestPoint.x = point_cloud_[i][0];
-              nearestPoint.y = point_cloud_[i][1];
+              //nearestPoint.x = point_cloud_[i][0];
+              //nearestPoint.y = point_cloud_[i][1];
           }
         }
     }
