@@ -120,6 +120,8 @@ class Navigation {
 
   float findBestCurvature();
 
+  bool checkPoint(int angle, float curvature, float x, float y)
+
   Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
 
  private:
