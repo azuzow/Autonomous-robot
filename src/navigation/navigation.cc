@@ -190,7 +190,7 @@ bool Navigation::isClockwise(float x, float y){
 }
 
 // find nearest point in point cloud
-float Navigation::findNearestPoint(float curvature){
+float Navigation::findNearestPoint(float curvature, float angle){
   if (point_cloud_.size() == 0) return {};
   float radius = 1 /curvature;
 
@@ -201,12 +201,12 @@ float Navigation::findNearestPoint(float curvature){
     for(unsigned int = 0; i < point_cloud_.size(); i++){
         float isInsideRange = check_if_collision(curvature, point_cloud_[i], innerRadius, outerRadius);
         if(isInsideRange == 0){
-          if(isClockwise()){
+          if(checkPoint(angle, curvature, point_cloud_[i][0], point_cloud_[i][1])){
             float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
             if(distance < minimumDistance){
               minimumDistance = distance;
-              nearestPoint.x = point_cloud_[i][0];
-              nearestPoint.y = point_cloud_[i][1];
+              //nearestPoint.x = point_cloud_[i][0];
+              //nearestPoint.y = point_cloud_[i][1];
           }
         }
     }
@@ -214,6 +214,12 @@ float Navigation::findNearestPoint(float curvature){
   return minimumDistance;
 }
 
+bool Navigation::checkPoint(float angle, float curvature, float x, float y){
+  float radius = 1 / curvature;
+  float pointX = radius * cos(angle);
+  float pointY = radius * sin(angle);
+  return (x > pointX) && (y > pointY);
+}
 
 
 

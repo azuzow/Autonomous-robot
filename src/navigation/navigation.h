@@ -94,7 +94,7 @@ class Navigation {
 
   float findDistanceofPointfromCurve(float x, float y, float curvature);
 
-  float findNearestPoint(float curvature);
+  float findNearestPoint(float curvature, float angle);
 
   void computeAllPaths();
 
@@ -119,6 +119,8 @@ class Navigation {
   float findFreePathLengthAlongACurvature(float curvature);
 
   float findBestCurvature();
+
+  bool checkPoint(int angle, float curvature, float x, float y)
 
   Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
 
