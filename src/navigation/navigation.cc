@@ -199,8 +199,8 @@ float Navigation::findNearestPoint(float curvature, float theta){
   outerRadius = 1.5 * radius
 
     for(unsigned int = 0; i < point_cloud_.size(); i++){
-        bool isInsideRange = check_if_collision(curvature, point_cloud_[i], innerRadius, outerRadius);
-        if(isInsideRange){
+        float isInsideRange = check_if_collision(curvature, point_cloud_[i], innerRadius, outerRadius);
+        if(isInsideRange == 0){
           if(isClockwise()){
             float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
             if(distance < minimumDistance){
@@ -276,7 +276,7 @@ float Navigation::check_if_collision(float curvature, Eigen::Vector2f& target_po
   float y=1/curvature;
   // NOT SURE IF CENTER OF CIRCLE IS ALWAYS (0,R)
   float target_x=target_point[0];
-  float target_y=target_point[0];
+  float target_y=target_point[1];
   float distance_from_center = sqrt(pow((x-target_x),2) + pow((y-target_y),2));
   if ( (distance_from_center<inner_radius) || (distance_from_center>outer_radius) )
   {
