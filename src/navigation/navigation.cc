@@ -183,21 +183,38 @@ float Navigation::findDistanceofPointfromCurve(float x, float y, float curvature
   return abs(sqrt(pow(x,2) + pow(y,2)) - radius);
 }
 
+bool Navigation::isClockwise(float x, float y){
+float counterX = - y; 
+float counterY = x;
+return (-x * counterY + y * counterX > 0);
+}
+
 // find nearest point in point cloud
-Eigen::Vector2f Navigation::findNearestPoint(float curvature){
+float Navigation::findNearestPoint(float curvature, float theta){
   if (point_cloud_.size() == 0) return {};
-  Eigen::Vector2f nearestPoint;
+  float radius = 1 /curvature;
+
   float minimumDistance = 10000;
+  innerRadius = .5 * radius
+  outerRadius = 1.5 * radius
+
     for(unsigned int = 0; i < point_cloud_.size(); i++){
-        float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
-        if(distance < minimumDistance){
-            minimumDistance = distance;
-            nearestPoint.x = point_cloud_[i][0];
-            nearestPoint.y = point_cloud_[i][1];
+        bool isInsideRange = check_if_collision(curvature, point_cloud_[i], innerRadius, outerRadius);
+        if(isInsideRange){
+          if(isClockwise()){
+            float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
+            if(distance < minimumDistance){
+              minimumDistance = distance;
+              nearestPoint.x = point_cloud_[i][0];
+              nearestPoint.y = point_cloud_[i][1];
+          }
+        }
     }
   }
-  return nearestPoint;
+  return minimumDistance;
 }
+
+
 
 
 

@@ -93,7 +93,13 @@ class Navigation {
 
   float findDistanceofPointfromCurve(float x, float y, float curvature);
 
-  Eigen::Vector2f findNearestPoint(float curvature)
+  float findNearestPoint(float curvature);
+
+  void computeAllPaths();
+
+  void scoreFunction();
+
+  bool isClockwise(float x, float y)
 
   // returns all possible paths the car might take
   void initialize_trajectories(const float curvature, const float distance, const float clearance);
