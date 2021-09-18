@@ -190,7 +190,7 @@ return (-x * counterY + y * counterX > 0);
 }
 
 // find nearest point in point cloud
-float Navigation::findNearestPoint(float curvature, float theta){
+float Navigation::findNearestPoint(float curvature){
   if (point_cloud_.size() == 0) return {};
   float radius = 1 /curvature;
 
