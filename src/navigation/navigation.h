@@ -94,7 +94,7 @@ class Navigation {
 
   float findDistanceofPointfromCurve(float x, float y, float curvature);
 
-  float findNearestPoint(float curvature);
+  float findNearestPoint(float curvature, float angle);
 
   void computeAllPaths();
 
