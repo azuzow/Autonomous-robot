@@ -340,7 +340,7 @@ void Navigation::DrawCar()
 
 float Navigation::findBestCurvature()
 {
-  float best_curvature = 0;
+  float best_curvature = 1;
   findFreePathLengthAlongACurvature(best_curvature);
   return best_curvature;
 }
@@ -355,6 +355,11 @@ void Navigation::Run() {
 
   // If odometry has not been initialized, we can't do anything.
   if (!odom_initialized_) return;
+
+  Eigen::Vector2f test_cross1 = Vector2f( 1, 1 );
+  Eigen::Vector2f test_cross2 = Vector2f( 2, 2 );
+
+  visualization::DrawLine( test_cross1, test_cross2, 0x32a852, local_viz_msg_);
   // The control iteration goes here.
   // Feel free to make helper functions to structure the control appropriately.
 
