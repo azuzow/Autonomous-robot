@@ -48,7 +48,7 @@ ros::Publisher viz_pub_;
 VisualizationMsg local_viz_msg_;
 VisualizationMsg global_viz_msg_;
 AckermannCurvatureDriveMsg drive_msg_;
-VisualizationMsg viz_curve_msg;
+
 // Epsilon value for handling limited numerical precision.
 const float kEpsilon = 1e-5;
 } //namespace
@@ -67,8 +67,8 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     nav_goal_angle_(0),
     speed(0),
     max_speed(1),
-    max_acceleration_magnitude(2),
-    max_deceleration_magnitude(3) {
+    max_acceleration_magnitude(4),
+    max_deceleration_magnitude(4) {
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
   viz_pub_ = n->advertise<VisualizationMsg>("visualization", 1);
@@ -77,7 +77,7 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
   global_viz_msg_ = visualization::NewVisualizationMessage(
       "map", "navigation_global");
   InitRosHeader("base_link", &drive_msg_.header);
-  // viz_curve_msg= visualization::NewVisualizationMessage("trajectory", "local_trajectory");
+
 }
 
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
@@ -139,7 +139,7 @@ float Navigation::calculate_distance_to_target(){
   return min_distance;
 }
 
-float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
+void Navigation::updateSpeed(const Eigen::Vector2f& velocity){
   float x=velocity.x();
   float y=velocity.y();
   speed= sqrt(x*x + y*y);
@@ -160,23 +160,54 @@ float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
 
   // safety margin to stop
-  float safety_margin=1.0;
+  // float safety_margin=1.0;
 
 
-  if (distance<=safety_margin){
-    return 0;
-  }
   if (distance_needed_to_stop>=distance){
     // decelerate
 
-  return -max_deceleration_magnitude;
+  drive_msg_.velocity=speed-max_deceleration_magnitude;
+  }
+  else if(speed <1){
+    drive_msg_.velocity=speed+max_acceleration_magnitude;
+  }
+  else{
+    drive_msg_.velocity=max_speed;
   }
 
   // otherwise keep going max speed
-  return max_speed;
+  
   }
 
+Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations){
 
+  previous_velocities.push_back(robot_vel_);
+  previous_locations.push_back(robot_loc_);
+  previous_omegas.push_back(robot_omega_);
+  previous_speeds.push_back(speed);
+
+  Eigen::Vector2f predicted_location(robot_loc_);
+
+  if (previous_omegas.size()>iterations){
+    previous_omegas.pop_front();
+    previous_locations.pop_front();
+    previous_velocities.pop_front();
+    previous_speeds.pop_front();
+  }
+
+  if (previous_omegas.size()== iterations){
+  for (unsigned int i=0; i < iterations; i++)
+  {
+    predicted_location.x()= predicted_location.x()+(1/curvature)*cos(previous_velocities[i].x()*latency);
+    predicted_location.y()= predicted_location.y()+(1/curvature)*sin(previous_velocities[i].y()*latency);
+  }
+  // predicted_location=predicted_location*latency;
+  std::cout<<"predicted_location"<<predicted_location.x()<<" "<<predicted_location.y()<<std::endl;
+  std::cout<<"actual location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
+  }
+  visualization::DrawCross(predicted_location, 0.4, 0x32a852,global_viz_msg_);
+return predicted_location;
+}
 void Navigation::updatePointCloudToGlobalFrame(){
   float x_p, y_p;
   unsigned int i;
@@ -191,6 +222,20 @@ void Navigation::updatePointCloudToGlobalFrame(){
   }
   std::cout << robot_angle_ << std::endl;
 }
+void Navigation::DrawCar()
+{
+  Eigen::Vector2f front_left = Vector2f( car_base_length + (car_length - car_base_length) / 2 + margin, car_width/2 + margin );
+  Eigen::Vector2f back_left = Vector2f( - (car_length - car_base_length) / 2 - margin, car_width/2 + margin );
+
+  Eigen::Vector2f front_right = Vector2f( car_base_length + (car_length - car_base_length) / 2 + margin, -car_width/2 - margin );
+  Eigen::Vector2f back_right = Vector2f( - (car_length - car_base_length) / 2 - margin, -car_width/2 - margin );
+
+  visualization::DrawLine( front_left, back_left, 0x32a852,local_viz_msg_);
+  visualization::DrawLine( front_right, back_right, 0x32a852,local_viz_msg_);
+
+  visualization::DrawLine( front_left, front_right, 0x32a852,local_viz_msg_);
+  visualization::DrawLine( back_left, back_right, 0x32a852,local_viz_msg_);
+}
 
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
@@ -199,7 +244,7 @@ void Navigation::Run() {
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
   visualization::ClearVisualizationMsg(global_viz_msg_);
-  // visualization::ClearVisualizationMsg(viz_curve_msg);
+
   // If odometry has not been initialized, we can't do anything.
   if (!odom_initialized_) return;
   // The control iteration goes here.
@@ -208,28 +253,29 @@ void Navigation::Run() {
   // The latest observed point cloud is accessible via "point_cloud_"
 
   // Eventually, you will have to set the control values to issue drive commands:
-  drive_msg_.curvature = 0;
-
+  curvature=2;
+  drive_msg_.curvature = 2;
+  latency_compensation(0.3,6);
+  DrawCar();
   std::cout << "Robot variables:" << robot_loc_ << "\n Robot velocity: " << robot_vel_ << robot_angle_ << std::endl;
   // if (point_cloud_set) {std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
   // }
 
   // updatePointCloudToGlobalFrame();
-  drive_msg_.velocity = updateSpeed(robot_vel_);
+  updateSpeed(robot_vel_);
   // std::cout<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
 
 
 
-  // visualization::DrawPathOption(M_PI/2,5,3,viz_curve_msg);
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = ros::Time::now();
   global_viz_msg_.header.stamp = ros::Time::now();
-  // viz_curve_msg.header.stamp = ros::Time::now();
+
   drive_msg_.header.stamp = ros::Time::now();
   // Publish messages.
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
-  viz_pub_.publish(viz_curve_msg);
+
   drive_pub_.publish(drive_msg_);
 }
 

@@ -21,7 +21,7 @@
 
 #include <vector>
 #include <iostream>
-
+#include<deque>
 #include "eigen3/Eigen/Dense"
 
 #ifndef NAVIGATION_H
@@ -67,7 +67,7 @@ class Navigation {
   void SetNavGoal(const Eigen::Vector2f& loc, float angle);
 
   // Update speed by using current velocity
-  float updateSpeed(const Eigen::Vector2f& velocity);
+  void updateSpeed(const Eigen::Vector2f& velocity);
 
   float calculate_distance_to_target();
 
@@ -77,6 +77,16 @@ class Navigation {
 
   void updatePointCloudToGlobalFrame();
 
+  Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
+
+    float min_curve = -M_PI_2;
+  //max = pi/2
+  float max_curve = M_PI_2;
+  void DrawCar();
+ float car_length = 0.47;
+  float car_width = 0.21;
+  float car_base_length = 0.35;
+  float margin = 0.1;
  private:
 
   // Whether odometry has been initialized.
@@ -115,7 +125,12 @@ class Navigation {
   float max_acceleration_magnitude;
   float max_deceleration_magnitude;
   // previous velocity
-  float previous_velocity;
+  float curvature;
+  std::deque<float> previous_speeds;
+  std::deque<Eigen::Vector2f> previous_velocities;
+  std::deque<Eigen::Vector2f> previous_locations;
+  std::deque<float> previous_omegas;
+
 };
 
 }  // namespace navigation
