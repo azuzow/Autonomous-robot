@@ -219,7 +219,14 @@ bool Navigation::check_if_collision(const float curvature, const Eigen::Vector2f
 
 
 /*
+float return_path_length()
+{
+  if collision at inner part
+    find angle beta and free path length
 
+  else if collision at outer part
+    find angle beta and free path length
+}
 */
 
 
@@ -280,7 +287,6 @@ void Navigation::Run() {
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
   drive_pub_.publish(drive_msg_);
-  exit(0);
 }
 
 }  // namespace navigation
