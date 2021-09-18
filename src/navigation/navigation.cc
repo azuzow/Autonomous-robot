@@ -177,6 +177,38 @@ float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
   }
 
 
+  Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations){
+    latency_compensation(0.3, 6);
+
+    previous_velocities.push_back(robot_vel_);
+    previous_locations.push_back(robot_loc_);
+    previous_omegas.push_back(robot_omega_);
+    previous_speeds.push_back(speed);
+
+    Eigen::Vector2f predicted_location(robot_loc_);
+
+    if (previous_omegas.size()>iterations){
+      previous_omegas.pop_front();
+      previous_locations.pop_front();
+      previous_velocities.pop_front();
+      previous_speeds.pop_front();
+    }
+
+    if (previous_omegas.size()== iterations){
+    for (unsigned int i=0; i < iterations; i++)
+    {
+      predicted_location.x()= predicted_location.x()+(1/curvature)*cos(previous_velocities[i].x()*latency);
+      predicted_location.y()= predicted_location.y()+(1/curvature)*sin(previous_velocities[i].y()*latency);
+    }
+    // predicted_location=predicted_location*latency;
+    std::cout<<"predicted_location"<<predicted_location.x()<<" "<<predicted_location.y()<<std::endl;
+    std::cout<<"actual location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
+    }
+    visualization::DrawCross(predicted_location, 0.4, 0x32a852,global_viz_msg_);
+  return predicted_location;
+  }
+
+
 
 void Navigation::updatePointCloudToGlobalFrame(){
   float x_p, y_p;

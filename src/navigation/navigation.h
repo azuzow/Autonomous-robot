@@ -32,6 +32,7 @@ length: 47 cm
 
 #include <vector>
 #include <iostream>
+#include<deque>
 
 #include "eigen3/Eigen/Dense"
 
@@ -108,6 +109,9 @@ class Navigation {
   float findFreePathLengthAlongACurvature(float curvature);
 
   float findBestCurvature();
+
+  Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
+
  private:
 
   // Whether odometry has been initialized.
@@ -147,6 +151,11 @@ class Navigation {
   float max_deceleration_magnitude;
   // previous velocity
   float previous_velocity;
+  std::deque<float> previous_speeds;
+  std::deque<Eigen::Vector2f> previous_velocities;
+  std::deque<Eigen::Vector2f> previous_locations;
+  std::deque<float> previous_omegas;
+
 };
 
 }  // namespace navigation
