@@ -33,6 +33,7 @@ length: 47 cm
 #include <vector>
 #include <iostream>
 #include<deque>
+#include <algorithm>
 
 #include "eigen3/Eigen/Dense"
 

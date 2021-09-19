@@ -141,7 +141,7 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
 // }
 
 
-  void Navigation::updateSpeed(PathOption optimal_path){
+void Navigation::updateSpeed(PathOption optimal_path){
   float x=robot_loc_.x();
   float y=robot_loc_.y();
   speed= sqrt(x*x + y*y);
@@ -317,6 +317,7 @@ float Navigation::findNearestPoint(float curvature, float angle){
         }
     }
   }
+  if (minimumDistance > 10) return 10;
   return minimumDistance;
 }
 
@@ -409,6 +410,11 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
     }
     // if (min_free_path_length < 0)
     std::pair<float, float> min_free_path_variables;
+    // if (min_free_path_angle > 0.75)
+    // {
+    //   min_free_path_angle = 0.75;
+    //   min_free_path_length = 0.75 * abs(r);
+    // }
     min_free_path_variables.first = min_free_path_length;
     min_free_path_variables.second = min_free_path_angle;
     return min_free_path_variables;
@@ -459,47 +465,51 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_clearance=-1000.0;
   float current_free_path_angle=-1000.0;
   float current_distance_score=-10000;
-  float max_score = -100000.0;
+  float max_score = -1000000.0;
 
-  float current_score=0;
+  float current_score=0, curvature_score;
   std::pair<float, float> free_path_length_angle;
 
   PathOption optimal_path;
   for(unsigned int i =0; i<total_curves;i++)
   {
 
-    current_curvature =  min_curve + i*0.1;
+    current_curvature =  min_curve + i*0.05;
     std::cout<<"curves "<<current_curvature<<std::endl;
     std::pair<float,float>free_path_pair= free_path_length_function( current_curvature );
     // first is length second is angle
     current_free_path_length = free_path_pair.first;
     current_free_path_angle = free_path_length_angle.second;
+    std::cout << "Current free path length:" << current_free_path_length << std::endl;
+    curvature_score = - 3*abs(current_curvature);
 
     current_clearance = findNearestPoint( current_curvature, current_free_path_angle );
 
     current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = current_free_path_length + current_clearance*3 + current_distance_score*-50;
+    current_score = current_free_path_length + current_clearance*0.1 + curvature_score + 10;
 
-    std::cout << current_free_path_length << " " << current_clearance << std::endl;
+    std::cout << " score terms: " << current_score << " " << current_free_path_length << " " << current_clearance << " " << current_distance_score << std::endl;
+    std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
 
-    visualization::DrawPathOption(current_curvature,current_free_path_length,current_clearance,local_viz_msg_);
     if ( max_score < current_score )
     {
-  optimal_path.curvature=current_curvature;
-  optimal_path.clearance=current_clearance;
-  optimal_path.free_path_length=current_free_path_length;
-  optimal_path.score=current_score;
+      optimal_path.curvature=current_curvature;
+      optimal_path.clearance=current_clearance;
+      optimal_path.free_path_length=current_free_path_length;
+      optimal_path.score=current_score;
+      max_score = current_score;
     }
+    visualization::DrawPathOption(current_curvature, optimal_path.score ,current_clearance,local_viz_msg_);
   }
-  std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<<std::endl;
+  std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<< std::endl;
   return optimal_path;
 }
 
 
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
-
+  std::cout << "\n \n \n New iteration of run" << std::endl;
 
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
@@ -528,19 +538,19 @@ void Navigation::Run() {
 
   // find best path based predicted location
   Eigen::Vector2f target_point{10,0};
-  best_path= find_optimal_path(20, -1.0,target_point);
+  best_path= find_optimal_path(30, -0.8, target_point);
 
   // decide wether to speed up stay the same or slow down based on distance to target
       updateSpeed(best_path);
   // set trajectory for future time step
   drive_msg_.curvature = best_path.curvature;
-  std::cout << "Robot variables:" << robot_loc_ << "\n Robot velocity: " << robot_vel_ << robot_angle_ << std::endl;
-  std::cout << "Odom variables:" << odom_loc_ << "\n Odom angle: "  << odom_angle_ << "\n Odom start angle:" << odom_start_angle_ << odom_start_loc_ << std::endl;
+  // std::cout << "Robot variables:" << robot_loc_ << "\n Robot velocity: " << robot_vel_ << robot_angle_ << std::endl;
+  // std::cout << "Odom variables:" << odom_loc_ << "\n Odom angle: "  << odom_angle_ << "\n Odom start angle:" << odom_start_angle_ << odom_start_loc_ << std::endl;
   // if (point_cloud_set) {std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
   // }
 
   // updatePointCloudToGlobalFrame();
-  std::cout<<"robot location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
+  std::cout << "Best curvature: " << drive_msg_.curvature << std::endl;
   visualization::DrawCross(robot_loc_, 3, 0x32a852,local_viz_msg_);
   DrawCar();
 
@@ -562,7 +572,11 @@ void Navigation::Run() {
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
   drive_pub_.publish(drive_msg_);
-  // exit(0);
+  // sleep(2);
+  if (drive_msg_.velocity == 0)
+  {
+    exit(0);
+  }
 }
 
 }  // namespace navigation
