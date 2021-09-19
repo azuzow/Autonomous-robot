@@ -49,6 +49,7 @@ struct PathOption {
   float curvature;
   float clearance;
   float free_path_length;
+  float score;
   Eigen::Vector2f obstruction;
   Eigen::Vector2f closest_point;
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
@@ -100,10 +101,24 @@ class Navigation {
 
   void scoreFunction();
 
-  bool isClockwise(float x, float y)
+  bool isClockwise(float x, float y);
 
   // returns all possible paths the car might take
   void initialize_trajectories(const float curvature, const float distance, const float clearance);
+
+  float check_if_collision(float curvature, Eigen::Vector2f& target_point, float inner_radius, float mid_radius, float outer_radius);
+
+  std::pair<float, float> free_path_length_function(float curvature);
+  // std::pair<float, float> findFreePathLengthAlongACurvature(float curvature);
+
+  float findBestCurvature(unsigned int& total_curves, float& min_curve);
+
+  bool checkPoint(float angle, float curvature, float x, float y);
+
+  Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
+
+  float find_optimal_path(unsigned int total_curves, float min_curve);
+
   //min = -pi/2
   float min_curve = -M_PI_2;
   //max = pi/2
@@ -114,15 +129,6 @@ class Navigation {
   float car_base_length = 0.35;
   float margin = 0.2;
 
-  float check_if_collision(float curvature, Eigen::Vector2f& target_point, float inner_radius, float mid_radius, float outer_radius);
-
-  float findFreePathLengthAlongACurvature(float curvature);
-
-  float findBestCurvature();
-
-  bool checkPoint(int angle, float curvature, float x, float y)
-
-  Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
 
  private:
 
