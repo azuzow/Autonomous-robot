@@ -202,15 +202,18 @@ bool Navigation::checkPoint(float angle, float curvature, float x, float y){
   return (x > pointX) && (y > pointY);
 }
 
-float Navigation::distanceAlongPath(float x, float y, float curvature){
+std::pair<float, float> Navigation::distanceAlongPath(float x, float y, float curvature){
   float xCoord = x;
   float yCoord = y;
+  std::pair<float, float> length_and_angle;
   float radius = 1 / curvature;
   //radiusfromPoint = abs(sqrt(pow(xCoord,2) + pow((yCoord - radius),2)));
   float distancebetweenPoints = abs(sqrt(pow(xCoord,2) + pow((yCoord),2)));
   float theta = acos(1 - (pow(distancebetweenPoints, 2)/ (2 * pow(radius,2))));
   float length = radius * theta;
-  return length;
+  length_and_angle.first = length;
+  length_and_angle.second = theta;
+  return length_and_angle;
 }
 
 Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations)
@@ -345,6 +348,17 @@ Eigen::Vector2f  Navigation::findVectorOfNearestPoint(float curvature, float ang
   return nearestPoint;
 }
 
+  //check if point lies in percentage of area in a sector of a circle starting at 0 degrees
+bool Navigation::checkPointinSector(float x, float y, float percent, float radius ){
+  float angleStart = 0;
+  float angleEnd = 350/percent + angleStart;  
+
+  //get polar co-ordinates
+  float polarRadius = sqrt (x*x + y*y);
+  float angle = atan(y /x );
+
+  return (angle >= angleStart && angle <= angleEnd && polarRadius < radius);
+}
 
 std::pair<float, float> Navigation::free_path_length_function(float curvature)
 {
@@ -457,12 +471,13 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_curvature=-1000.0;
   float current_free_path_length=-1000.0;
   float current_clearance=-1000.0;
-  float current_free_path_angle=-1000.0;
+  //float current_free_path_angle=-1000.0;
   float current_distance_score=-10000;
   float max_score = -100000.0;
 
   float current_score=0;
   std::pair<float, float> free_path_length_angle;
+  std::pair<float,float> current_length_and_angle;
 
   PathOption optimal_path;
   for(unsigned int i =0; i<total_curves;i++)
@@ -473,9 +488,14 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     std::pair<float,float>free_path_pair= free_path_length_function( current_curvature );
     // first is length second is angle
     current_free_path_length = free_path_pair.first;
-    current_free_path_angle = free_path_length_angle.second;
+    //current_free_path_angle = free_path_length_angle.second;
 
-    current_clearance = findNearestPoint( current_curvature, current_free_path_angle );
+
+    //// first is length second is angle
+    current_length_and_angle = distanceAlongPath(target_point.x(), target_point.y(), current_curvature);
+    current_length_and_angle.second *= .9; 
+
+    current_clearance = findNearestPoint( current_curvature, current_length_and_angle.second );
 
     current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
