@@ -101,7 +101,7 @@ class Navigation {
   //return vector of nearest point
   Eigen::Vector2f  findVectorOfNearestPoint(float curvature, float angle);
 
-  float distanceAlongPath(float x, float y, float curvature);
+  std::pair<float, float> distanceAlongPath(float x, float y, float curvature);
 
   void computeAllPaths();
 
