@@ -80,12 +80,12 @@ class Navigation {
   void SetNavGoal(const Eigen::Vector2f& loc, float angle);
 
   // Update speed by using current velocity
-  float updateSpeed(const Eigen::Vector2f& velocity);
+  void updateSpeed(PathOption optimal_path);
 
   void DrawCar();
 
   // Draw car
-  float calculate_distance_to_target();
+  // void calculate_distance_to_target();
 
   Eigen::Vector2f get_robot_loc();
 
@@ -117,7 +117,7 @@ class Navigation {
 
   Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
 
-  float find_optimal_path(unsigned int total_curves, float min_curve);
+  PathOption find_optimal_path(unsigned int total_curves, float min_curve,const Eigen::Vector2f target_point);
 
   //min = -pi/2
   float min_curve = -M_PI_2;
@@ -174,6 +174,7 @@ class Navigation {
   std::deque<Eigen::Vector2f> previous_locations;
   std::deque<float> previous_omegas;
   std::deque<float> previous_angles;
+  PathOption best_path;
 };
 
 }  // namespace navigation

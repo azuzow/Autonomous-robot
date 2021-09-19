@@ -67,8 +67,8 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     nav_goal_angle_(0),
     speed(0),
     max_speed(1),
-    max_acceleration_magnitude(2),
-    max_deceleration_magnitude(3) {
+    max_acceleration_magnitude(4),
+    max_deceleration_magnitude(4) {
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
   viz_pub_ = n->advertise<VisualizationMsg>("visualization", 1);
@@ -122,56 +122,63 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   point_cloud_ = cloud;
 }
 
-float Navigation::calculate_distance_to_target(){
-  float min_distance = -1000000;
-  if (point_cloud_.size() == 0) return -1;
+// void Navigation::calculate_distance_to_target(){
+//   float min_distance = -1000000;
+//   if (point_cloud_.size() == 0) {
+//     // return -1;
+// }
+//   for (unsigned int i=0; i < point_cloud_.size(); i++)
+//   {
+//     float distance = sqrt( pow(point_cloud_[i][0], 2) + pow(point_cloud_[i][1], 2) );
 
-  for (unsigned int i=0; i < point_cloud_.size(); i++)
-  {
-    float distance = sqrt( pow(point_cloud_[i][0], 2) + pow(point_cloud_[i][1], 2) );
-
-    if ( abs(point_cloud_[i][1]) < car_length + margin ) // Checking if i-th point is in straight line or not.
-    {
-      // std::cout << "Information about minimum point: Distance " << distance << " index: " << i << std::endl;
-      min_distance = distance;
-    }
-  }
-  return min_distance;
-}
+//     if ( abs(point_cloud_[i][1]) < car_length + margin ) // Checking if i-th point is in straight line or not.
+//     {
+//       // std::cout << "Information about minimum point: Distance " << distance << " index: " << i << std::endl;
+//       min_distance = distance;
+//     }
+//   }
+//   // return min_distance;
+// }
 
 
-float Navigation::updateSpeed(const Eigen::Vector2f& velocity){
-  float x=velocity.x();
-  float y=velocity.y();
+  void Navigation::updateSpeed(PathOption optimal_path){
+  float x=robot_loc_.x();
+  float y=robot_loc_.y();
   speed= sqrt(x*x + y*y);
-  float distance = calculate_distance_to_target();
+  float distance = optimal_path.free_path_length;
 
-  // std::cout<<speed<<std::endl;
 
-  float latency = speed*(1/10);
-          std::cout<<"==================="<<std::endl;
-  std::cout<<"latency "<<latency<<std::endl;
-  distance=distance-latency;
-   std::cout<<"distance remaining "<<distance<<std::endl;
   // time_needed_to_stop= (speed*speed)/max_deceleration_magnitude;
-
+  std::cout<<"==================="<<std::endl;
   float distance_needed_to_stop= (speed*speed)/(2*max_deceleration_magnitude);
-     std::cout<<"distance needed to stop "<<distance_needed_to_stop<<std::endl;
-        std::cout<<"==================="<<std::endl;
+  std::cout<<"distance needed to stop "<<distance_needed_to_stop<<std::endl;
+  std::cout<<"==================="<<std::endl;
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
+  std::cout<<"distance remaining "<<distance<<std::endl;
+  std::cout<<speed<<" "<<max_speed<<" "<<distance<<std::endl;
+  if(speed<max_speed && distance>0  ){
 
-  if (distance<=margin){
-    return 0;
-    exit(0);
+    std::cout<<"accelerating"<<std::endl;
+    drive_msg_.velocity=robot_omega_+max_acceleration_magnitude;
   }
-  if (distance_needed_to_stop>=distance){
+  else if(speed>max_speed && distance>0){
+    drive_msg_.velocity=max_speed;
+  }
+  else if(robot_omega_<=0 ){
+    std::cout<<"stopped"<<std::endl;
+    drive_msg_.velocity=0;
+  }
+  else if (distance_needed_to_stop>=distance){
     // decelerate
+    std::cout<<speed<<"decelerating"<<std::endl;
 
-  return -max_deceleration_magnitude;
+  drive_msg_.velocity=robot_omega_-max_deceleration_magnitude;
   }
-
+  else{
   // otherwise keep going max speed
-  return max_speed;
+    std::cout<<"cruising"<<std::endl;
+  drive_msg_.velocity=max_speed;
+  }
 }
 
   //Distnace of  point from curvature is equal to the difference of the distance of the point from origin and the radius of curvature
@@ -262,11 +269,11 @@ float Navigation::check_if_collision(float curvature, Eigen::Vector2f& target_po
   {
     return 0;
   }
-  else if ( (distance_from_center >= inner_radius) || (distance_from_center <= mid_radius) )
+  else if ( (distance_from_center >= inner_radius) && (distance_from_center <= mid_radius) )
   {
     return 1;
   }
-  else if ( (distance_from_center >= mid_radius) || (distance_from_center <= outer_radius) )
+  else if ( (distance_from_center >= mid_radius) && (distance_from_center <= outer_radius) )
   {
     return 2;
   }
@@ -308,6 +315,7 @@ float Navigation::findNearestPoint(float curvature, float angle){
 std::pair<float, float> Navigation::free_path_length_function(float curvature)
 {
       //   find inner radius and outer radius
+    const float MAX_LENGTH = 4;
     float r=1/curvature;
     float inner_radius = r - car_width/2 - margin;
     float outer_radius = sqrt( pow( r+ margin + car_width/2, 2) + pow( car_base_length + (car_length - car_base_length)/2 + margin, 2 ) );
@@ -315,6 +323,7 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
     float collision = 0, collision_point_angle, total_angle, free_path_angle=0.0, free_path_length=0.0, min_free_path_length=0.0, min_free_path_angle=0.0;
     float x, y;
     min_free_path_length = 1000000;
+
     for (unsigned int i=0; i < point_cloud_.size(); i++)
     {
       x = point_cloud_[i][0], y = point_cloud_[i][1];
@@ -339,6 +348,7 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
         free_path_length = free_path_angle * r;
         // min_free_path_length = std::min( min_free_path_length, free_path_length );
       }
+
       else if(collision == 2)
       {
         //outer collision
@@ -348,6 +358,7 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
         free_path_length = free_path_angle * r;
         // min_free_path_length = std::min( min_free_path_length, free_path_length );
       }
+
       if (min_free_path_length > free_path_length)
       {
         min_free_path_length  = free_path_length;
@@ -355,7 +366,13 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
       }
       // std::cout << "Minimum free path length" << min_free_path_length << " " <<  collision << " " << point_cloud_[i] << " " << i << " " << collision_point_angle << " " << total_angle << std::endl;
     }
+    std::cout<<"===================="<<std::endl;
+    std::cout<<"collision "<<collision<<std::endl;
+    std::cout<<"===================="<<std::endl;
     std::cout << "Minimum free path length" << min_free_path_length << std::endl;
+    if(min_free_path_length>MAX_LENGTH){
+      min_free_path_length=MAX_LENGTH;
+    }
     // if (min_free_path_length < 0)
     std::pair<float, float> min_free_path_variables;
     min_free_path_variables.first = min_free_path_length;
@@ -400,26 +417,49 @@ void Navigation::DrawCar()
 //   return best_curvature;
 // }
 
-float Navigation::find_optimal_path(unsigned int total_curves, float min_curve)
+PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_curve, const Eigen::Vector2f target_point)
 {
-  PathOption path;
-  float angle, max_score = -100000, best_curvature=0.0;
+
+  float current_curvature=-1000.0;
+  float current_free_path_length=-1000.0;
+  float current_clearance=-1000.0;
+  float current_free_path_angle=-1000.0;
+  float current_distance_score=-10000;
+  float max_score = -100000.0;
+
+  float current_score=0;
   std::pair<float, float> free_path_length_angle;
+
+  PathOption optimal_path;
   for(unsigned int i =0; i<total_curves;i++)
   {
-    path.curvature =  min_curve + i*0.1;
-    free_path_length_angle = free_path_length_function( path.curvature );
-    path.free_path_length = free_path_length_angle.first;
-    angle = free_path_length_angle.second;
-    path.clearance = findNearestPoint( path.curvature, angle );
-    path.score = path.free_path_length + path.clearance ;
-    std::cout << path.free_path_length << " " << path.clearance << std::endl;
-    if ( max_score < path.score )
+
+    current_curvature =  min_curve + i*0.1;
+    std::cout<<"curves "<<current_curvature<<std::endl;
+    std::pair<float,float>free_path_pair= free_path_length_function( current_curvature );
+    // first is length second is angle
+    current_free_path_length = free_path_pair.first;
+    current_free_path_angle = free_path_length_angle.second;
+
+    current_clearance = findNearestPoint( current_curvature, current_free_path_angle );
+
+    current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
+
+    current_score = current_free_path_length + current_clearance*3 + current_distance_score*-50;
+
+    std::cout << current_free_path_length << " " << current_clearance << std::endl;
+
+    visualization::DrawPathOption(current_curvature,current_free_path_length,current_clearance,local_viz_msg_);
+    if ( max_score < current_score )
     {
-      best_curvature = path.curvature;
+  optimal_path.curvature=current_curvature;
+  optimal_path.clearance=current_clearance;
+  optimal_path.free_path_length=current_free_path_length;
+  optimal_path.score=current_score;
     }
   }
-  return best_curvature;
+  std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<<std::endl;
+  return optimal_path;
 }
 
 
@@ -445,9 +485,21 @@ void Navigation::Run() {
 
   // Eventually, you will have to set the control values to issue drive commands:
   // curvature=0;
-  latency_compensation(0.3, 6);
-  drive_msg_.curvature = find_optimal_path(20, -1.0);
 
+  // predict location for when commands are executed
+
+  //uncomment when we actually know how to transform points based on new location
+  // Eigen::Vector2f predicted_location= latency_compensation(0.3, 6);
+  // reconstruct point cloud based on predicted location and rotation
+
+  // find best path based predicted location
+  Eigen::Vector2f target_point{10,0};
+  best_path= find_optimal_path(20, -1.0,target_point);
+
+  // decide wether to speed up stay the same or slow down based on distance to target
+      updateSpeed(best_path);
+  // set trajectory for future time step
+  drive_msg_.curvature = best_path.curvature;
   std::cout << "Robot variables:" << robot_loc_ << "\n Robot velocity: " << robot_vel_ << robot_angle_ << std::endl;
   std::cout << "Odom variables:" << odom_loc_ << "\n Odom angle: "  << odom_angle_ << "\n Odom start angle:" << odom_start_angle_ << odom_start_loc_ << std::endl;
   // if (point_cloud_set) {std::cout << "Yes, it worked" << point_cloud_.size() << std::endl;
@@ -457,7 +509,11 @@ void Navigation::Run() {
   std::cout<<"robot location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
   visualization::DrawCross(robot_loc_, 3, 0x32a852,local_viz_msg_);
   DrawCar();
-  drive_msg_.velocity = updateSpeed(robot_vel_);
+
+  
+
+
+
   // std::cout<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
 
 
