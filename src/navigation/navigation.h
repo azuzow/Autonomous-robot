@@ -123,6 +123,8 @@ class Navigation {
 
   Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
 
+  bool checkPointinSector(float x, float y, float percent, float radius );
+
   PathOption find_optimal_path(unsigned int total_curves, float min_curve,const Eigen::Vector2f target_point);
 
   //min = -pi/2

@@ -348,6 +348,17 @@ Eigen::Vector2f  Navigation::findVectorOfNearestPoint(float curvature, float ang
   return nearestPoint;
 }
 
+  //check if point lies in percentage of area in a sector of a circle starting at 0 degrees
+bool Navigation::checkPointinSector(float x, float y, float percent, float radius ){
+  float angleStart = 0;
+  float angleEnd = 350/percent + angleStart;  
+
+  //get polar co-ordinates
+  float polarRadius = sqrt (x*x + y*y);
+  float angle = atan(y /x );
+
+  return (angle >= angleStart && angle <= angleEnd && polarRadius < radius);
+}
 
 std::pair<float, float> Navigation::free_path_length_function(float curvature)
 {
