@@ -95,7 +95,13 @@ class Navigation {
 
   float findDistanceofPointfromCurve(float x, float y, float curvature);
 
+  //returns distance of nearest point
   float findNearestPoint(float curvature, float angle);
+
+  //return vector of nearest point
+  Eigen::Vector2f  findVectorOfNearestPoint(float curvature, float angle);
+
+  float distanceAlongPath(float x, float y, float curvature);
 
   void computeAllPaths();
 

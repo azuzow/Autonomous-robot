@@ -202,7 +202,16 @@ bool Navigation::checkPoint(float angle, float curvature, float x, float y){
   return (x > pointX) && (y > pointY);
 }
 
-
+float Navigation::distanceAlongPath(float x, float y, float curvature){
+  float xCoord = x;
+  float yCoord = y;
+  float radius = 1 / curvature;
+  //radiusfromPoint = abs(sqrt(pow(xCoord,2) + pow((yCoord - radius),2)));
+  float distancebetweenPoints = abs(sqrt(pow(xCoord,2) + pow((yCoord),2)));
+  float theta = acos(1 - (pow(distancebetweenPoints, 2)/ (2 * pow(radius,2))));
+  float length = radius * theta;
+  return length;
+}
 
 Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations)
 {
@@ -309,6 +318,31 @@ float Navigation::findNearestPoint(float curvature, float angle){
     }
   }
   return minimumDistance;
+}
+
+
+Eigen::Vector2f  Navigation::findVectorOfNearestPoint(float curvature, float angle){
+  if (point_cloud_.size() == 0) return {};
+  float radius = 1 /curvature;
+  Eigen::Vector2f  nearestPoint;
+  float minimumDistance = 10000;
+  float innerRadius = .5 * radius;
+  float outerRadius = 1.5 * radius;
+
+    for(unsigned int i = 0; i < point_cloud_.size(); i++){
+        float isInsideRange = check_if_collision(curvature, point_cloud_[i], innerRadius, (innerRadius + outerRadius)/2, outerRadius);
+        if(isInsideRange == 0){
+          if(checkPoint(angle, curvature, point_cloud_[i][0], point_cloud_[i][1])){
+            float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
+            if(distance < minimumDistance){
+              minimumDistance = distance;
+              nearestPoint.x() = point_cloud_[i][0];
+              nearestPoint.y() = point_cloud_[i][1];
+          }
+        }
+    }
+  }
+  return nearestPoint;
 }
 
 
