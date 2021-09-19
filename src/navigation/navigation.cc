@@ -351,9 +351,9 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
       //   find inner radius and outer radius
     const float MAX_LENGTH = 4;
     float r=1/curvature;
-    float inner_radius = r - car_width/2 - margin;
-    float outer_radius = sqrt( pow( r+ margin + car_width/2, 2) + pow( car_base_length + (car_length - car_base_length)/2 + margin, 2 ) );
-    float mid_radius = sqrt( pow( r - car_width/2 - margin , 2) + pow( car_base_length + (car_length - car_base_length)/2 + margin, 2 ) );
+    float inner_radius = abs(r) - car_width/2 - margin;
+    float outer_radius = sqrt( pow( abs(r)+ margin + car_width/2, 2) + pow( car_base_length + (car_length - car_base_length)/2 + margin, 2 ) );
+    float mid_radius = sqrt( pow( abs(r) - car_width/2 - margin , 2) + pow( car_base_length + (car_length - car_base_length)/2 + margin, 2 ) );
     float collision = 0, collision_point_angle, total_angle, free_path_angle=0.0, free_path_length=0.0, min_free_path_length=0.0, min_free_path_angle=0.0;
     float x, y;
     min_free_path_length = 1000000;
@@ -376,10 +376,10 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
       else if(collision == 1)
       {
         //inner collision
-        collision_point_angle = acos( (( r - car_width/2 - margin ) / ( sqrt( pow(x, 2) + pow( y - r, 2 ) ) ) ) );
+        collision_point_angle = acos( (( abs(r) - car_width/2 - margin ) / ( sqrt( pow(x, 2) + pow( y - r, 2 ) ) ) ) );
         total_angle = acos( ( (y-r)*(y-r) + r*r - y*y ) / ( 2*sqrt( x*x + (y-r)*(y-r) )*abs(r) ) );
         free_path_angle = total_angle - collision_point_angle;
-        free_path_length = free_path_angle * r;
+        free_path_length = free_path_angle * abs(r);
         // min_free_path_length = std::min( min_free_path_length, free_path_length );
       }
 
@@ -389,7 +389,7 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
         collision_point_angle = asin( ( ( car_base_length + ( car_length  - car_base_length )/2 + margin ) / ( sqrt( pow( x, 2 ) + pow( y - r, 2 ) ) ) ) );
         total_angle = acos( ( (y-r)*(y-r) + r*r - y*y ) / ( 2*sqrt( x*x + (y-r)*(y-r) )*abs(r) ) );
         free_path_angle = total_angle - collision_point_angle;
-        free_path_length = free_path_angle * r;
+        free_path_length = free_path_angle * abs(r);
         // min_free_path_length = std::min( min_free_path_length, free_path_length );
       }
 
@@ -544,7 +544,7 @@ void Navigation::Run() {
   visualization::DrawCross(robot_loc_, 3, 0x32a852,local_viz_msg_);
   DrawCar();
 
-  
+
 
 
 
