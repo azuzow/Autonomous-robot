@@ -136,7 +136,7 @@ class Navigation {
   float car_length = 0.47;
   float car_width = 0.21;
   float car_base_length = 0.35;
-  float margin = 0.2;
+  float margin = 0.1;
 
 
  private:

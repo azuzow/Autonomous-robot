@@ -180,7 +180,8 @@ void Navigation::updateSpeed(PathOption optimal_path){
     std::cout << "Wrong speed" << std::endl;
     drive_msg_.velocity=max_speed;
   }
-  else{
+  else
+  {
   // otherwise keep going max speed
     std::cout<<"cruising"<<std::endl;
   drive_msg_.velocity=max_speed;
@@ -371,7 +372,7 @@ bool Navigation::checkPointinSector(float x, float y, float percent, float radiu
 std::pair<float, float> Navigation::free_path_length_function(float curvature)
 {
       //   find inner radius and outer radius
-    const float MAX_LENGTH = 4;
+    const float MAX_LENGTH = 5;
     float r=1/curvature;
     float inner_radius = abs(r) - car_width/2 - margin;
     float outer_radius = sqrt( pow( abs(r)+ margin + car_width/2, 2) + pow( car_base_length + (car_length - car_base_length)/2 + margin, 2 ) );
@@ -492,11 +493,12 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_clearance=-1000.0;
   // float current_free_path_angle=-1000.0;
   // float current_distance_score=-10000;
-  float max_score = -1000000.0;
+  float max_score = -1000000.0, total_weights;
 
   float current_score=0, curvature_score;
   std::pair<float, float> free_path_length_angle;
 
+  PathOption paths[total_curves];
   PathOption optimal_path;
   for(unsigned int i =0; i<total_curves;i++)
   {
@@ -511,8 +513,8 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     //   continue;
     // }
     // current_free_path_angle = free_path_pair.second;
-    curvature_score = - 0.0*abs(current_curvature);
-    //current_free_path_angle = free_path_length_angle.second;
+    curvature_score = - abs(current_curvature);
+    // current_free_path_angle = free_path_length_angle.second;
 
 
     //// first is length second is angle
@@ -527,20 +529,65 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     // current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = 50 * current_free_path_length +  current_clearance + curvature_score + 10;
+    current_score = current_free_path_length + curvature_score + 10 +  (1 / (10 * current_free_path_length)) * current_clearance;
 
-    std::cout << " score terms: current score" << current_score << " current free path length: " << current_free_path_length << " current_clearance: " << current_clearance << std::endl;
+    std::cout << " score terms: current score" << current_score << " current free path length: " << current_free_path_length << " current_clearance: " << current_clearance << " Curvature score: " << curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
 
+    paths[i].curvature = current_curvature;
+    paths[i].clearance = current_clearance;
+    paths[i].free_path_length = current_free_path_length;
+    paths[i].score = current_score;
+    visualization::DrawPathOption(current_curvature, current_score, current_clearance, local_viz_msg_);
+  }
+
+  for(unsigned int i =0; i<total_curves;i++)
+  {
+    current_curvature =  min_curve + i*0.05;
+    current_score = paths[i].score;
+    std::cout << current_score << "\n";
+    total_weights = 1;
+    if(int(i) - 1 >= 0)
+    {
+      current_score += 0.4 * paths[i-1].score;
+      total_weights += 0.4;
+    }
+    else if( int(i)-2 >= 0)
+    {
+      current_score += 0.1 * paths[i-2].score;
+      total_weights += 0.1;
+    }
+    else if( int(i)-3 >= 0)
+    {
+      current_score += 0.025 * paths[i-3].score;
+      total_weights += 0.025;
+    }
+    else if(i + 1 < total_curves)
+    {
+      current_score += 0.4 * paths[i+1].score;
+      total_weights += 0.4;
+    }
+    else if(i + 2 < total_curves)
+    {
+      current_score += 0.1 * paths[i+2].score;
+      total_weights += 0.1;
+    }
+    else if( i+3 < total_curves)
+    {
+      current_score += 0.025 * paths[i+3].score;
+      total_weights += 0.025;
+    }
+    current_score = current_score / total_weights;
+    std::cout << i << " " << max_score << " " << current_score << std::endl;
     if ( max_score < current_score )
     {
+      std::cout << i << std::endl;
       optimal_path.curvature=current_curvature;
       optimal_path.clearance=current_clearance;
       optimal_path.free_path_length=current_free_path_length;
       optimal_path.score=current_score;
       max_score = current_score;
     }
-    visualization::DrawPathOption(current_curvature, current_score, current_clearance, local_viz_msg_);
   }
 
   std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<< std::endl;
