@@ -540,6 +540,16 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     std::cout << " score terms: current score" << current_score << " current free path length: " << current_free_path_length << " current_clearance: " << current_clearance << " Curvature score: " << curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
 
+    if ( max_score < current_score )
+    {
+      // std::cout << i << std::endl;
+      optimal_path.curvature=current_curvature;
+      optimal_path.clearance=current_clearance;
+      optimal_path.free_path_length=current_free_path_length;
+      optimal_path.score=current_score;
+      max_score = current_score;
+    }
+
     paths[i].curvature = current_curvature;
     paths[i].clearance = current_clearance;
     paths[i].free_path_length = current_free_path_length;
@@ -547,54 +557,45 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     visualization::DrawPathOption(current_curvature, current_score, current_clearance, local_viz_msg_);
   }
 
-  for(unsigned int i =0; i<total_curves;i++)
-  {
-    current_curvature =  min_curve + i*0.05;
-    current_score = paths[i].score;
-    std::cout << current_score << "\n";
-    total_weights = 1;
-    if(int(i) - 1 >= 0)
-    {
-      current_score += 0.4 * paths[i-1].score;
-      total_weights += 0.4;
-    }
-    else if( int(i)-2 >= 0)
-    {
-      current_score += 0.1 * paths[i-2].score;
-      total_weights += 0.1;
-    }
-    else if( int(i)-3 >= 0)
-    {
-      current_score += 0.025 * paths[i-3].score;
-      total_weights += 0.025;
-    }
-    else if(i + 1 < total_curves)
-    {
-      current_score += 0.4 * paths[i+1].score;
-      total_weights += 0.4;
-    }
-    else if(i + 2 < total_curves)
-    {
-      current_score += 0.1 * paths[i+2].score;
-      total_weights += 0.1;
-    }
-    else if( i+3 < total_curves)
-    {
-      current_score += 0.025 * paths[i+3].score;
-      total_weights += 0.025;
-    }
-    current_score = current_score / total_weights;
-    std::cout << i << " " << max_score << " " << current_score << std::endl;
-    if ( max_score < current_score )
-    {
-      std::cout << i << std::endl;
-      optimal_path.curvature=current_curvature;
-      optimal_path.clearance=current_clearance;
-      optimal_path.free_path_length=current_free_path_length;
-      optimal_path.score=current_score;
-      max_score = current_score;
-    }
-  }
+  // for(unsigned int i =0; i<total_curves;i++)
+  // {
+  //   current_curvature =  min_curve + i*0.05;
+  //   current_score = paths[i].score;
+  //   std::cout << current_score << "\n";
+  //   total_weights = 1;
+  //   if(int(i) - 1 >= 0)
+  //   {
+  //     current_score += 0.4 * paths[i-1].score;
+  //     total_weights += 0.4;
+  //   }
+  //   else if( int(i)-2 >= 0)
+  //   {
+  //     current_score += 0.1 * paths[i-2].score;
+  //     total_weights += 0.1;
+  //   }
+  //   else if( int(i)-3 >= 0)
+  //   {
+  //     current_score += 0.025 * paths[i-3].score;
+  //     total_weights += 0.025;
+  //   }
+  //   else if(i + 1 < total_curves)
+  //   {
+  //     current_score += 0.4 * paths[i+1].score;
+  //     total_weights += 0.4;
+  //   }
+  //   else if(i + 2 < total_curves)
+  //   {
+  //     current_score += 0.1 * paths[i+2].score;
+  //     total_weights += 0.1;
+  //   }
+  //   else if( i+3 < total_curves)
+  //   {
+  //     current_score += 0.025 * paths[i+3].score;
+  //     total_weights += 0.025;
+  //   }
+  //   current_score = current_score / total_weights;
+  //   std::cout << i << " " << max_score << " " << current_score << std::endl;
+  // }
 
   std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<< std::endl;
   if(optimal_path.free_path_length == -1000)
