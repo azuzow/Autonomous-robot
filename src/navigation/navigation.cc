@@ -9,9 +9,9 @@
 //  GNU Lesser General Public License for more details.
 //
 //  You should have received a copy of the GNU Lesser General Public License
-//  Version 3 in the file COPYING that came with this distribution.
 //  If not, see <http://www.gnu.org/licenses/>.
 //========================================================================
+//  Version 3 in the file COPYING that came with this distribution.
 /*!
 \file    navigation.cc
 \brief   Starter code for navigation.
@@ -67,7 +67,7 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     nav_goal_angle_(0),
     speed(0),
     max_speed(1),
-    max_acceleration_magnitude(2),
+    max_acceleration_magnitude(4),
     max_deceleration_magnitude(4) {
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
@@ -144,7 +144,8 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
 void Navigation::updateSpeed(PathOption optimal_path){
   float x=robot_vel_.x();
   float y=robot_vel_.y();
-  speed= sqrt(x*x + y*y);
+  // speed= sqrt(x*x + y*y);
+  speed = drive_msg_.velocity;
   float distance = optimal_path.free_path_length;
 
 
@@ -156,7 +157,7 @@ void Navigation::updateSpeed(PathOption optimal_path){
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
   std::cout<<"distance remaining "<<distance<<std::endl;
   std::cout<<speed<<" "<<max_speed<<" "<<distance<< " " << robot_omega_ << " " << x << " " << y << std::endl;
-  if(robot_vel_.x()<0 ){
+  if( (robot_vel_.x()<=0)  && (distance_needed_to_stop>=distance) ){
     std::cout<<"stopped"<<std::endl;
     drive_msg_.velocity=0;
   }
@@ -630,7 +631,7 @@ void Navigation::Run() {
 
   // find best path based predicted location
   Eigen::Vector2f target_point{10,0};
-  best_path= find_optimal_path(30, -0.78, target_point);
+  best_path= find_optimal_path(40, -1.0, target_point);
 
   // decide wether to speed up stay the same or slow down based on distance to target
       updateSpeed(best_path);
