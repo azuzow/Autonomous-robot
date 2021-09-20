@@ -160,12 +160,13 @@ void Navigation::updateSpeed(PathOption optimal_path){
   if( (robot_vel_.x()<=0)  && (distance_needed_to_stop>=distance) ){
     std::cout<<"stopped"<<std::endl;
     drive_msg_.velocity=0;
+    exit(0);
   }
   else if (distance_needed_to_stop>=distance)
   {
     // decelerate
     std::cout<<speed<<"decelerating"<<std::endl;
-    drive_msg_.velocity=speed-max_deceleration_magnitude;
+    drive_msg_.velocity=speed-(max_deceleration_magnitude*1/20);
     // exit(0);
   }
   else if(speed<max_speed && distance>0  ){
@@ -174,13 +175,10 @@ void Navigation::updateSpeed(PathOption optimal_path){
     drive_msg_.velocity=speed+max_acceleration_magnitude;
     if (drive_msg_.velocity > max_speed)
     {
-      drive_msg_.velocity = max_speed;
+      drive_msg_.velocity = speed+ (max_acceleration_magnitude*1/20);
     }
   }
-  else if(speed>max_speed && distance>0){
-    std::cout << "Wrong speed" << std::endl;
-    drive_msg_.velocity=max_speed;
-  }
+
   else
   {
   // otherwise keep going max speed
@@ -304,21 +302,12 @@ float Navigation::checkPoint(float angle, float curvature, float x, float y)
   float r = 1.0 / curvature;
 
   float distance=0;
-  if(x < 0) return false;
-  // std::cout << "In check point: " << x << " " << y << " " << (y - r) << " " << std::atan( x/(y - r) ) << " " <<  angle << std::endl;
-  float point_angle=abs(std::atan( x/(y - r) ))
-  if( point_angle <= angle  ){
-    float x_point = r*cos(point_angle);
-    float y_point = r*sin(point_angle);
-    distance = sqrt(pow(x_point-x,2)+pow(y_point-y),2);
 
-  }
-else{
-      float x_point = r*cos(angle);
+    float x_point = r*cos(angle);
     float y_point = r*sin(angle);
-    distance = sqrt(pow(x_point-x,2)+pow(y_point-y),2);
+    distance = sqrt(pow(x_point-x,2)+pow(y_point-y,2));
 
-}
+
 
 
   return distance;
@@ -329,25 +318,21 @@ else{
 float Navigation::findNearestPoint(float curvature, float angle)
 {
   if (point_cloud_.size() == 0) return {};
-  float radius = 1 /curvature;
+
   float minimumDistance = 10000, distance = 0.0;
 
   for(unsigned int i = 0; i < point_cloud_.size(); i++)
   {
-  //   distance = sqrt( point_cloud_[i][0] * point_cloud_[i][0] + (point_cloud_[i][1] - radius)*(point_cloud_[i][1] - radius) );
-  //   // float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
-  //   if(abs(distance - radius) < minimumDistance)
-  //   {
-  //     minimumDistance = abs(distance - radius);
-  //   }
-  // }
-  // if (minimumDistance > 3) return 3;
-  distance = checkPoint(angle*.9,curvature,point_cloud_[i][0],point_cloud_[i][1])
+
+  distance = checkPoint(angle*.1,curvature,point_cloud_[i][0],point_cloud_[i][1]);
   if (distance< minimumDistance){
     minimumDistance=distance;
   }
-  return minimumDistance;
+  
 }
+return minimumDistance;
+}
+
 
 
 Eigen::Vector2f  Navigation::findVectorOfNearestPoint(float curvature, float angle){
@@ -364,6 +349,7 @@ Eigen::Vector2f  Navigation::findVectorOfNearestPoint(float curvature, float ang
           if(checkPoint(angle, curvature, point_cloud_[i][0], point_cloud_[i][1])){
             float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
             if(distance < minimumDistance){
+
               minimumDistance = distance;
               nearestPoint.x() = point_cloud_[i][0];
               nearestPoint.y() = point_cloud_[i][1];
@@ -519,7 +505,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_score=0, curvature_score;
   std::pair<float, float> free_path_length_angle;
 
-  PathOption paths[total_curves];
+
   PathOption optimal_path;
   for(unsigned int i =0; i<total_curves;i++)
   {
@@ -528,7 +514,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     std::pair<float,float>free_path_pair= free_path_length_function( current_curvature );
     // first is length second is angle
 
-    current_free_path_length = free_path_pair.first * .9;
+    current_free_path_length = free_path_pair.first;
     // if(current_free_path_length < 0.3)
     // {
     //   continue;
@@ -543,6 +529,9 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     // current_length_and_angle.second *= .9;
 
     current_clearance = findNearestPoint( current_curvature, free_path_pair.second );
+    if(current_clearance>3){
+      current_clearance=0;
+    }
     // if (current_clearance < 0.1)
     // {
     //   continue;
@@ -550,9 +539,9 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     // current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = 10 * current_free_path_length + 3 * curvature_score + 2 * current_clearance;
+    current_score = 5 * current_free_path_length + 7* curvature_score + 2 * current_clearance;
 
-	   std::cout << " score terms: current score" << current_score << " current free path length: " << current_free_path_length << " current_clearance: " << current_clearance << " Curvature score: " << curvature_score << std::endl;
+	   std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length << " current_clearance: " << 10*current_clearance << " Curvature score: " << 5*curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
    if ( max_score < current_score )
     {
@@ -564,10 +553,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
       max_score = current_score;
     }
 
-    paths[i].curvature = current_curvature;
-    paths[i].clearance = current_clearance;
-    paths[i].free_path_length = current_free_path_length;
-    paths[i].score = current_score;
+
     visualization::DrawPathOption(current_curvature, current_score, current_clearance, local_viz_msg_);
   }
 
@@ -626,6 +612,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   if(optimal_path.free_path_length == -1000)
   {
     exit(0);
+
   }
   return optimal_path;
 }
