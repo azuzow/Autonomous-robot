@@ -299,13 +299,29 @@ float Navigation::check_if_collision(float curvature, Eigen::Vector2f& target_po
   }
 }
 
-bool Navigation::checkPoint(float angle, float curvature, float x, float y)
+float Navigation::checkPoint(float angle, float curvature, float x, float y)
 {
   float r = 1.0 / curvature;
+
+  float distance=0;
   if(x < 0) return false;
   // std::cout << "In check point: " << x << " " << y << " " << (y - r) << " " << std::atan( x/(y - r) ) << " " <<  angle << std::endl;
-  if( abs(std::atan( x/(y - r) )) <= angle  ) return true;
-  return false;
+  float point_angle=abs(std::atan( x/(y - r) ))
+  if( point_angle <= angle  ){
+    float x_point = r*cos(point_angle);
+    float y_point = r*sin(point_angle);
+    distance = sqrt(pow(x_point-x,2)+pow(y_point-y),2);
+
+  }
+else{
+      float x_point = r*cos(angle);
+    float y_point = r*sin(angle);
+    distance = sqrt(pow(x_point-x,2)+pow(y_point-y),2);
+
+}
+
+
+  return distance;
 }
 
 
@@ -318,14 +334,18 @@ float Navigation::findNearestPoint(float curvature, float angle)
 
   for(unsigned int i = 0; i < point_cloud_.size(); i++)
   {
-    distance = sqrt( point_cloud_[i][0] * point_cloud_[i][0] + (point_cloud_[i][1] - radius)*(point_cloud_[i][1] - radius) );
-    // float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
-    if(abs(distance - radius) < minimumDistance)
-    {
-      minimumDistance = abs(distance - radius);
-    }
+  //   distance = sqrt( point_cloud_[i][0] * point_cloud_[i][0] + (point_cloud_[i][1] - radius)*(point_cloud_[i][1] - radius) );
+  //   // float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
+  //   if(abs(distance - radius) < minimumDistance)
+  //   {
+  //     minimumDistance = abs(distance - radius);
+  //   }
+  // }
+  // if (minimumDistance > 3) return 3;
+  distance = checkPoint(angle*.9,curvature,point_cloud_[i][0],point_cloud_[i][1])
+  if (distance< minimumDistance){
+    minimumDistance=distance;
   }
-  if (minimumDistance > 3) return 3;
   return minimumDistance;
 }
 
