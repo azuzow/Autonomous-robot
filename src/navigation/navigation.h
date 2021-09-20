@@ -133,10 +133,10 @@ class Navigation {
   //max = pi/2
   float max_curve = M_PI_2;
 
-  float car_length = 0.47;
-  float car_width = 0.21;
-  float car_base_length = 0.35;
-  float margin = 0.1;
+  float car_length = 0.40;
+  float car_width = 0.23;
+  float car_base_length = 0.32;
+  float margin = 0.25;
 
 
  private:
