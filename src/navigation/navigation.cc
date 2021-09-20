@@ -550,7 +550,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     // current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = 100 * current_free_path_length + 5 * curvature_score + 2 * current_clearance;
+    current_score = 10 * current_free_path_length + 3 * curvature_score + 2 * current_clearance;
 
 	   std::cout << " score terms: current score" << current_score << " current free path length: " << current_free_path_length << " current_clearance: " << current_clearance << " Curvature score: " << curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
