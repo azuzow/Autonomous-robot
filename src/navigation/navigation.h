@@ -102,7 +102,7 @@ class Navigation {
   //return vector of nearest point
   Eigen::Vector2f  findVectorOfNearestPoint(float curvature, float angle);
 
-  float distanceAlongPath(float x, float y, float curvature);
+  std::pair<float, float> distanceAlongPath(float x, float y, float curvature);
 
   void computeAllPaths();
 
@@ -123,6 +123,8 @@ class Navigation {
   bool checkPoint(float angle, float curvature, float x, float y);
 
   Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
+
+  bool checkPointinSector(float x, float y, float percent, float radius );
 
   PathOption find_optimal_path(unsigned int total_curves, float min_curve,const Eigen::Vector2f target_point);
 

@@ -195,22 +195,19 @@ bool Navigation::isClockwise(float x, float y){
 }
 
 
-bool Navigation::checkPoint(float angle, float curvature, float x, float y){
-  float radius = 1 / curvature;
-  float pointX = radius * cos(angle);
-  float pointY = radius * sin(angle);
-  return (x > pointX) && (y > pointY);
-}
 
-float Navigation::distanceAlongPath(float x, float y, float curvature){
+std::pair<float, float> Navigation::distanceAlongPath(float x, float y, float curvature){
   float xCoord = x;
   float yCoord = y;
+  std::pair<float, float> length_and_angle;
   float radius = 1 / curvature;
   //radiusfromPoint = abs(sqrt(pow(xCoord,2) + pow((yCoord - radius),2)));
   float distancebetweenPoints = abs(sqrt(pow(xCoord,2) + pow((yCoord),2)));
   float theta = acos(1 - (pow(distancebetweenPoints, 2)/ (2 * pow(radius,2))));
   float length = radius * theta;
-  return length;
+  length_and_angle.first = length;
+  length_and_angle.second = theta;
+  return length_and_angle;
 }
 
 Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned int iterations)
@@ -294,27 +291,33 @@ float Navigation::check_if_collision(float curvature, Eigen::Vector2f& target_po
   }
 }
 
+bool Navigation::checkPoint(float angle, float curvature, float x, float y)
+{
+  float r = 1.0 / curvature;
+  if(x < 0) return false;
+  // std::cout << "In check point: " << x << " " << y << " " << (y - r) << " " << std::atan( x/(y - r) ) << " " <<  angle << std::endl;
+  if( abs(std::atan( x/(y - r) )) <= angle  ) return true;
+  return false;
+}
+
 
 // find nearest point in point cloud
-float Navigation::findNearestPoint(float curvature, float angle){
+float Navigation::findNearestPoint(float curvature, float angle)
+{
   if (point_cloud_.size() == 0) return {};
   float radius = 1 /curvature;
+  float minimumDistance = 10000, distance = 0.0;
 
-  float minimumDistance = 10000;
-  float innerRadius = .5 * radius;
-  float outerRadius = 1.5 * radius;
-
-    for(unsigned int i = 0; i < point_cloud_.size(); i++){
-        float isInsideRange = check_if_collision(curvature, point_cloud_[i], innerRadius, (innerRadius + outerRadius)/2, outerRadius);
-        if(isInsideRange == 0){
-          if(checkPoint(angle, curvature, point_cloud_[i][0], point_cloud_[i][1])){
-            float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
-            if(distance < minimumDistance){
-              minimumDistance = distance;
-              //nearestPoint.x = point_cloud_[i][0];
-              //nearestPoint.y = point_cloud_[i][1];
-          }
-        }
+  for(unsigned int i = 0; i < point_cloud_.size(); i++)
+  {
+    if(checkPoint(angle, curvature, point_cloud_[i][0], point_cloud_[i][1]))
+    {
+      distance = sqrt( point_cloud_[i][0] * point_cloud_[i][0] + ( point_cloud_[i][1] - radius )*( point_cloud_[i][1] - radius ) );
+      // float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
+      if(distance < minimumDistance)
+      {
+        minimumDistance = distance;
+      }
     }
   }
   if (minimumDistance > 10) return 10;
@@ -346,6 +349,17 @@ Eigen::Vector2f  Navigation::findVectorOfNearestPoint(float curvature, float ang
   return nearestPoint;
 }
 
+  //check if point lies in percentage of area in a sector of a circle starting at 0 degrees
+bool Navigation::checkPointinSector(float x, float y, float percent, float radius ){
+  float angleStart = 0;
+  float angleEnd = 350/percent + angleStart;
+
+  //get polar co-ordinates
+  float polarRadius = sqrt (x*x + y*y);
+  float angle = atan(y /x );
+
+  return (angle >= angleStart && angle <= angleEnd && polarRadius < radius);
+}
 
 std::pair<float, float> Navigation::free_path_length_function(float curvature)
 {
@@ -362,12 +376,13 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
     for (unsigned int i=0; i < point_cloud_.size(); i++)
     {
       x = point_cloud_[i][0], y = point_cloud_[i][1];
+      // std::cout << x << " " << y << std::endl;
       if( y * r < 0 )
       {
         // point on opposite side of turning
         continue;
       }
-      if (x < 0) continue; // points with angle>pi/2
+      // if (x < 0) continue; // points with angle>pi/2
       collision = check_if_collision(curvature, point_cloud_[i], inner_radius, mid_radius, outer_radius);
       if( collision == 0)
       {
@@ -376,6 +391,7 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
       }
       else if(collision == 1)
       {
+        // std::cout << "In inner collision\n";
         //inner collision
         collision_point_angle = acos( (( abs(r) - car_width/2 - margin ) / ( sqrt( pow(x, 2) + pow( y - r, 2 ) ) ) ) );
         total_angle = acos( ( (y-r)*(y-r) + r*r - y*y ) / ( 2*sqrt( x*x + (y-r)*(y-r) )*abs(r) ) );
@@ -391,8 +407,11 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
         total_angle = acos( ( (y-r)*(y-r) + r*r - y*y ) / ( 2*sqrt( x*x + (y-r)*(y-r) )*abs(r) ) );
         free_path_angle = total_angle - collision_point_angle;
         free_path_length = free_path_angle * abs(r);
+
+        // std::cout << x << " " << y << " " << free_path_length << " " << min_free_path_length << " In outer collision\n";
         // min_free_path_length = std::min( min_free_path_length, free_path_length );
       }
+
 
       if (min_free_path_length > free_path_length)
       {
@@ -463,12 +482,13 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_curvature=-1000.0;
   float current_free_path_length=-1000.0;
   float current_clearance=-1000.0;
-  float current_free_path_angle=-1000.0;
+  // float current_free_path_angle=-1000.0;
   float current_distance_score=-10000;
   float max_score = -1000000.0;
 
   float current_score=0, curvature_score;
   std::pair<float, float> free_path_length_angle;
+  std::pair<float,float> current_length_and_angle;
 
   PathOption optimal_path;
   for(unsigned int i =0; i<total_curves;i++)
@@ -478,12 +498,18 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     std::cout<<"curves "<<current_curvature<<std::endl;
     std::pair<float,float>free_path_pair= free_path_length_function( current_curvature );
     // first is length second is angle
-    current_free_path_length = free_path_pair.first;
-    current_free_path_angle = free_path_length_angle.second;
-    std::cout << "Current free path length:" << current_free_path_length << std::endl;
-    curvature_score = - 3*abs(current_curvature);
 
-    current_clearance = findNearestPoint( current_curvature, current_free_path_angle );
+    current_free_path_length = free_path_pair.first;
+    // current_free_path_angle = free_path_pair.second;
+    curvature_score = - 3*abs(current_curvature);
+    //current_free_path_angle = free_path_length_angle.second;
+
+
+    //// first is length second is angle
+    // current_length_and_angle = distanceAlongPath(target_point.x(), target_point.y(), current_curvature);
+    // current_length_and_angle.second *= .9;
+
+    current_clearance = findNearestPoint( current_curvature, current_length_and_angle.second );
 
     current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
@@ -500,8 +526,9 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
       optimal_path.score=current_score;
       max_score = current_score;
     }
-    visualization::DrawPathOption(current_curvature, optimal_path.score ,current_clearance,local_viz_msg_);
+    visualization::DrawPathOption(current_curvature, current_free_path_length, current_clearance, local_viz_msg_);
   }
+
   std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<< std::endl;
   return optimal_path;
 }
