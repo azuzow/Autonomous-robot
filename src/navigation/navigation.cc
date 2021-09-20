@@ -151,7 +151,7 @@ void Navigation::updateSpeed(PathOption optimal_path){
 
   // time_needed_to_stop= (speed*speed)/max_deceleration_magnitude;
   std::cout<<"==================="<<std::endl;
-  float distance_needed_to_stop= (speed*speed)/(2*max_deceleration_magnitude);
+  float distance_needed_to_stop= (max_speed*max_speed)/(2*max_deceleration_magnitude);
   std::cout<<"distance needed to stop "<<distance_needed_to_stop<<std::endl;
   std::cout<<"==================="<<std::endl;
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
@@ -373,7 +373,7 @@ bool Navigation::checkPointinSector(float x, float y, float percent, float radiu
 std::pair<float, float> Navigation::free_path_length_function(float curvature)
 {
       //   find inner radius and outer radius
-    const float MAX_LENGTH = 5;
+    const float MAX_ANGLE = 2;
     float r=1/curvature;
     float inner_radius = abs(r) - car_width/2 - margin;
     float outer_radius = sqrt( pow( abs(r)+ margin + car_width/2, 2) + pow( car_base_length + (car_length - car_base_length)/2 + margin, 2 ) );
@@ -433,9 +433,14 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
     // std::cout<<"collision "<<collision<<std::endl;
     // std::cout<<"===================="<<std::endl;
     // std::cout << "Minimum free path length" << min_free_path_length << " " << min_free_path_angle << std::endl;
-    if(min_free_path_length>MAX_LENGTH){
-      min_free_path_length=MAX_LENGTH;
-      min_free_path_angle = MAX_LENGTH / abs(r);
+    if(min_free_path_angle > MAX_ANGLE){
+      min_free_path_length = MAX_ANGLE * abs(r);
+      min_free_path_angle = MAX_ANGLE;
+    }
+
+    if(min_free_path_length > 5)
+    {
+      min_free_path_length = 5;
     }
     // if (min_free_path_length < 0)
     std::pair<float, float> min_free_path_variables;
@@ -514,7 +519,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     //   continue;
     // }
     // current_free_path_angle = free_path_pair.second;
-    curvature_score = - abs(current_curvature);
+    curvature_score = abs(current_curvature);
     // current_free_path_angle = free_path_length_angle.second;
 
 
@@ -530,7 +535,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     // current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = current_free_path_length + curvature_score + 10 +  (1 / (10 * current_free_path_length)) * current_clearance;
+    current_score = 5 * current_free_path_length + 10 + 3*curvature_score + 2 * current_clearance;
 
     std::cout << " score terms: current score" << current_score << " current free path length: " << current_free_path_length << " current_clearance: " << current_clearance << " Curvature score: " << curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
@@ -631,7 +636,7 @@ void Navigation::Run() {
 
   // find best path based predicted location
   Eigen::Vector2f target_point{10,0};
-  best_path= find_optimal_path(40, -1.0, target_point);
+  best_path= find_optimal_path(40, -1.02, target_point);
 
   // decide wether to speed up stay the same or slow down based on distance to target
       updateSpeed(best_path);
