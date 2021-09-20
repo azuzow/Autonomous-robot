@@ -498,6 +498,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_curvature=-1000.0;
   float current_free_path_length=-1000.0;
   float current_clearance=-1000.0;
+  float distance_needed_to_stop= (max_speed*max_speed)/(2*max_deceleration_magnitude);
   // float current_free_path_angle=-1000.0;
   // float current_distance_score=-10000;
   float max_score = -1000000.0; // total_weights;
@@ -515,6 +516,14 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     // first is length second is angle
 
     current_free_path_length = free_path_pair.first;
+    current_free_path_length_score=0;
+    if (current_free_path_length<distance_needed_to_stop){
+      std::cout<<"free path < distance needed to stop "<<current_curvature<<std::endl;
+      current_free_path_length_score=-100000000;
+    }
+    else{
+      current_free_path_length_score=current_free_path_length;
+    }
     // if(current_free_path_length < 0.3)
     // {
     //   continue;
@@ -541,7 +550,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     current_score = 5 * current_free_path_length + 7* curvature_score + 2 * current_clearance;
 
-	   std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length << " current_clearance: " << 10*current_clearance << " Curvature score: " << 5*curvature_score << std::endl;
+	   std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length_score << " current_clearance: " << 10*current_clearance << " Curvature score: " << 5*curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
    if ( max_score < current_score )
     {
