@@ -67,7 +67,7 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     nav_goal_angle_(0),
     speed(0),
     max_speed(1),
-    max_acceleration_magnitude(4),
+    max_acceleration_magnitude(2),
     max_deceleration_magnitude(4) {
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
@@ -142,8 +142,8 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
 
 
 void Navigation::updateSpeed(PathOption optimal_path){
-  float x=robot_loc_.x();
-  float y=robot_loc_.y();
+  float x=robot_vel_.x();
+  float y=robot_vel_.y();
   speed= sqrt(x*x + y*y);
   float distance = optimal_path.free_path_length;
 
@@ -155,24 +155,30 @@ void Navigation::updateSpeed(PathOption optimal_path){
   std::cout<<"==================="<<std::endl;
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
   std::cout<<"distance remaining "<<distance<<std::endl;
-  std::cout<<speed<<" "<<max_speed<<" "<<distance<<std::endl;
-  if(speed<max_speed && distance>0  ){
-
-    std::cout<<"accelerating"<<std::endl;
-    drive_msg_.velocity=robot_omega_+max_acceleration_magnitude;
-  }
-  else if(speed>max_speed && distance>0){
-    drive_msg_.velocity=max_speed;
-  }
-  else if(robot_omega_<=0 ){
+  std::cout<<speed<<" "<<max_speed<<" "<<distance<< " " << robot_omega_ << " " << x << " " << y << std::endl;
+  if(robot_vel_.x()<0 ){
     std::cout<<"stopped"<<std::endl;
     drive_msg_.velocity=0;
   }
-  else if (distance_needed_to_stop>=distance){
+  else if (distance_needed_to_stop>=distance)
+  {
     // decelerate
     std::cout<<speed<<"decelerating"<<std::endl;
+    drive_msg_.velocity=speed-max_deceleration_magnitude;
+    // exit(0);
+  }
+  else if(speed<max_speed && distance>0  ){
 
-  drive_msg_.velocity=robot_omega_-max_deceleration_magnitude;
+    std::cout<<"accelerating"<<std::endl;
+    drive_msg_.velocity=speed+max_acceleration_magnitude;
+    if (drive_msg_.velocity > max_speed)
+    {
+      drive_msg_.velocity = max_speed;
+    }
+  }
+  else if(speed>max_speed && distance>0){
+    std::cout << "Wrong speed" << std::endl;
+    drive_msg_.velocity=max_speed;
   }
   else{
   // otherwise keep going max speed
@@ -421,10 +427,10 @@ std::pair<float, float> Navigation::free_path_length_function(float curvature)
       }
       // std::cout << "Minimum free path length" << min_free_path_length << " " <<  collision << " " << point_cloud_[i] << " " << i << " " << collision_point_angle << " " << total_angle << std::endl;
     }
-    std::cout<<"===================="<<std::endl;
-    std::cout<<"collision "<<collision<<std::endl;
-    std::cout<<"===================="<<std::endl;
-    std::cout << "Minimum free path length" << min_free_path_length << " " << min_free_path_angle << std::endl;
+    // std::cout<<"===================="<<std::endl;
+    // std::cout<<"collision "<<collision<<std::endl;
+    // std::cout<<"===================="<<std::endl;
+    // std::cout << "Minimum free path length" << min_free_path_length << " " << min_free_path_angle << std::endl;
     if(min_free_path_length>MAX_LENGTH){
       min_free_path_length=MAX_LENGTH;
       min_free_path_angle = MAX_LENGTH / abs(r);
@@ -485,7 +491,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_free_path_length=-1000.0;
   float current_clearance=-1000.0;
   // float current_free_path_angle=-1000.0;
-  float current_distance_score=-10000;
+  // float current_distance_score=-10000;
   float max_score = -1000000.0;
 
   float current_score=0, curvature_score;
@@ -495,13 +501,17 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   for(unsigned int i =0; i<total_curves;i++)
   {
     current_curvature =  min_curve + i*0.05;
-    std::cout<<"curves "<<current_curvature<<std::endl;
+    // std::cout<<"curves "<<current_curvature<<std::endl;
     std::pair<float,float>free_path_pair= free_path_length_function( current_curvature );
     // first is length second is angle
 
     current_free_path_length = free_path_pair.first;
+    // if(current_free_path_length < 0.3)
+    // {
+    //   continue;
+    // }
     // current_free_path_angle = free_path_pair.second;
-    curvature_score = - 1.5*abs(current_curvature);
+    curvature_score = - 0.0*abs(current_curvature);
     //current_free_path_angle = free_path_length_angle.second;
 
 
@@ -510,13 +520,17 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     // current_length_and_angle.second *= .9;
 
     current_clearance = findNearestPoint( current_curvature, free_path_pair.second );
+    // if (current_clearance < 0.1)
+    // {
+    //   continue;
+    // }
 
-    current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
+    // current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = 15 * current_free_path_length + current_clearance + curvature_score + 10;
+    current_score = 50 * current_free_path_length + current_clearance + curvature_score + 10;
 
-    std::cout << " score terms: " << current_score << " " << current_free_path_length << " " << current_clearance << " " << current_distance_score << std::endl;
-    std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
+    std::cout << " score terms: current score" << current_score << " current free path length: " << current_free_path_length << " current_clearance: " << current_clearance << std::endl;
+    // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
 
     if ( max_score < current_score )
     {
@@ -526,10 +540,14 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
       optimal_path.score=current_score;
       max_score = current_score;
     }
-    visualization::DrawPathOption(current_curvature, current_free_path_length, current_clearance, local_viz_msg_);
+    visualization::DrawPathOption(current_curvature, current_score, current_clearance, local_viz_msg_);
   }
 
   std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<< std::endl;
+  if(optimal_path.free_path_length == -1000)
+  {
+    exit(0);
+  }
   return optimal_path;
 }
 
@@ -599,7 +617,7 @@ void Navigation::Run() {
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
   drive_pub_.publish(drive_msg_);
-  // sleep(10);
+  // sleep(1);
   if (drive_msg_.velocity == 0)
   {
     exit(0);
