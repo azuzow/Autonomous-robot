@@ -142,49 +142,47 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
 
 
 void Navigation::updateSpeed(PathOption optimal_path){
-  float x=robot_vel_.x();
-  float y=robot_vel_.y();
+  //float x=robot_vel_.x();
+  //float y=robot_vel_.y();
   // speed= sqrt(x*x + y*y);
   speed = drive_msg_.velocity;
   float distance = optimal_path.free_path_length;
 
 
   // time_needed_to_stop= (speed*speed)/max_deceleration_magnitude;
-  std::cout<<"==================="<<std::endl;
+  //std::cout<<"==================="<<std::endl;
   float distance_needed_to_stop= (max_speed*max_speed)/(2*max_deceleration_magnitude);
-  std::cout<<"distance needed to stop "<<distance_needed_to_stop<<std::endl;
-  std::cout<<"==================="<<std::endl;
+  //std::cout<<"distance needed to stop "<<distance_needed_to_stop<<std::endl;
+  //std::cout<<"==================="<<std::endl;
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
-  std::cout<<"distance remaining "<<distance<<std::endl;
-  std::cout<<speed<<" "<<max_speed<<" "<<distance<< " " << robot_omega_ << " " << x << " " << y << std::endl;
+  //std::cout<<"distance remaining "<<distance<<std::endl;
+  //std::cout<<speed<<" "<<max_speed<<" "<<distance<< " " << robot_omega_ << " " << x << " " << y << std::endl;
   if( (robot_vel_.x()<=0)  && (distance_needed_to_stop>=distance) ){
-    std::cout<<"stopped"<<std::endl;
+    //std::cout<<"stopped"<<std::endl;
     drive_msg_.velocity=0;
+    exit(0);
   }
-  else if (distance_needed_to_stop>=distance)
+  else if (distance_needed_to_stop>=0.9*distance)
   {
     // decelerate
-    std::cout<<speed<<"decelerating"<<std::endl;
-    drive_msg_.velocity=speed-max_deceleration_magnitude;
+    ///std::cout<<speed<<"decelerating"<<std::endl;
+    drive_msg_.velocity=speed-(max_deceleration_magnitude*1/20);
     // exit(0);
   }
   else if(speed<max_speed && distance>0  ){
 
-    std::cout<<"accelerating"<<std::endl;
+    //std::cout<<"accelerating"<<std::endl;
     drive_msg_.velocity=speed+max_acceleration_magnitude;
     if (drive_msg_.velocity > max_speed)
     {
-      drive_msg_.velocity = max_speed;
+      drive_msg_.velocity = speed+ (max_acceleration_magnitude*1/20);
     }
   }
-  else if(speed>max_speed && distance>0){
-    std::cout << "Wrong speed" << std::endl;
-    drive_msg_.velocity=max_speed;
-  }
+
   else
   {
   // otherwise keep going max speed
-    std::cout<<"cruising"<<std::endl;
+    //std::cout<<"cruising"<<std::endl;
   drive_msg_.velocity=max_speed;
   }
 }
@@ -243,8 +241,8 @@ Eigen::Vector2f Navigation::latency_compensation(const float& latency, unsigned 
       predicted_location.y()= predicted_location.y() + previous_speeds[i] * sin( previous_angles[i] )/20;
     }
     // predicted_location=predicted_location*latency;
-    std::cout<<"predicted_location"<<predicted_location.x()<<" "<<predicted_location.y()<<std::endl;
-    std::cout<<"actual location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
+    //std::cout<<"predicted_location"<<predicted_location.x()<<" "<<predicted_location.y()<<std::endl;
+    //std::cout<<"actual location"<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
     }
     visualization::DrawCross(robot_loc_, 0.4, 0x32a852,global_viz_msg_);
     visualization::DrawCross(predicted_location, 0.2, 0xFF0000 ,global_viz_msg_);
@@ -258,14 +256,14 @@ void Navigation::updatePointCloudToGlobalFrame()
   unsigned int i;
   for (i=0; i < point_cloud_.size(); i++)
   {
-    std::cout << point_cloud_[i] << "before" << std::endl;
+    //std::cout << point_cloud_[i] << "before" << std::endl;
     x_p = point_cloud_[i][0] * cos( -robot_angle_ ) - point_cloud_[i][1] * sin( -robot_angle_ ) - robot_loc_[0];
     y_p = point_cloud_[i][0] * sin( -robot_angle_ ) + point_cloud_[i][1] * cos( -robot_angle_ ) - robot_loc_[1];
     point_cloud_[i][0] = x_p;
     point_cloud_[i][1] = y_p;
-    std::cout << "\n" << point_cloud_[i] << "after" << std::endl;
+    //std::cout << "\n" << point_cloud_[i] << "after" << std::endl;
   }
-  std::cout << robot_angle_ << std::endl;
+  //std::cout << robot_angle_ << std::endl;
 }
 
 
@@ -299,13 +297,20 @@ float Navigation::check_if_collision(float curvature, Eigen::Vector2f& target_po
   }
 }
 
-bool Navigation::checkPoint(float angle, float curvature, float x, float y)
+float Navigation::checkPoint(float angle, float curvature, float x, float y)
 {
   float r = 1.0 / curvature;
-  if(x < 0) return false;
-  // std::cout << "In check point: " << x << " " << y << " " << (y - r) << " " << std::atan( x/(y - r) ) << " " <<  angle << std::endl;
-  if( abs(std::atan( x/(y - r) )) <= angle  ) return true;
-  return false;
+
+  float distance=0;
+
+    float x_point = r*cos(angle);
+    float y_point = r*sin(angle);
+    distance = sqrt(pow(x_point-x,2)+pow(y_point-y,2));
+
+
+
+
+  return distance;
 }
 
 
@@ -313,21 +318,21 @@ bool Navigation::checkPoint(float angle, float curvature, float x, float y)
 float Navigation::findNearestPoint(float curvature, float angle)
 {
   if (point_cloud_.size() == 0) return {};
-  float radius = 1 /curvature;
+
   float minimumDistance = 10000, distance = 0.0;
 
   for(unsigned int i = 0; i < point_cloud_.size(); i++)
   {
-    distance = sqrt( point_cloud_[i][0] * point_cloud_[i][0] + (point_cloud_[i][1] - radius)*(point_cloud_[i][1] - radius) );
-    // float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
-    if(abs(distance - radius) < minimumDistance)
-    {
-      minimumDistance = abs(distance - radius);
-    }
+
+  distance = checkPoint(angle*.1,curvature,point_cloud_[i][0],point_cloud_[i][1]);
+  if (distance< minimumDistance){
+    minimumDistance=distance;
   }
-  if (minimumDistance > 3) return 3;
-  return minimumDistance;
+  
 }
+return minimumDistance;
+}
+
 
 
 Eigen::Vector2f  Navigation::findVectorOfNearestPoint(float curvature, float angle){
@@ -344,6 +349,7 @@ Eigen::Vector2f  Navigation::findVectorOfNearestPoint(float curvature, float ang
           if(checkPoint(angle, curvature, point_cloud_[i][0], point_cloud_[i][1])){
             float distance = findDistanceofPointfromCurve(point_cloud_[i][0] , point_cloud_[i][1], curvature);
             if(distance < minimumDistance){
+
               minimumDistance = distance;
               nearestPoint.x() = point_cloud_[i][0];
               nearestPoint.y() = point_cloud_[i][1];
@@ -492,6 +498,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_curvature=-1000.0;
   float current_free_path_length=-1000.0;
   float current_clearance=-1000.0;
+  float distance_needed_to_stop= (max_speed*max_speed)/(2*max_deceleration_magnitude);
   // float current_free_path_angle=-1000.0;
   // float current_distance_score=-10000;
   float max_score = -1000000.0; // total_weights;
@@ -499,16 +506,23 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_score=0, curvature_score;
   std::pair<float, float> free_path_length_angle;
 
-  PathOption paths[total_curves];
+
   PathOption optimal_path;
   for(unsigned int i =0; i<total_curves;i++)
   {
-    current_curvature =  min_curve + i*0.05;
-    std::cout<<"curves "<<current_curvature<<std::endl;
+    current_curvature =  min_curve + i*0.1;
+    //std::cout<<"curves "<<current_curvature<<std::endl;
     std::pair<float,float>free_path_pair= free_path_length_function( current_curvature );
     // first is length second is angle
 
-    current_free_path_length = free_path_pair.first * .9;
+    current_free_path_length = free_path_pair.first;
+    //float current_free_path_length_score=0;
+    if (current_free_path_length<distance_needed_to_stop){
+      //std::cout<<"free path < distance needed to stop "<<current_curvature<<std::endl;
+      //current_free_path_length_score=-100000000;
+      current_free_path_length=-1000000000;
+    }
+    
     // if(current_free_path_length < 0.3)
     // {
     //   continue;
@@ -523,16 +537,19 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     // current_length_and_angle.second *= .9;
 
     current_clearance = findNearestPoint( current_curvature, free_path_pair.second );
-    // if (current_clearance < 0.1)
+    if(current_clearance>3){
+      current_clearance=0;
+    }
+    // if (current_clearance < 0.1)`
     // {
     //   continue;
     // }
 
     // current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = 100 * current_free_path_length + 5 * curvature_score + 2 * current_clearance;
+    current_score = 5 * current_free_path_length + 4 * curvature_score + 2 * current_clearance;
 
-	   std::cout << " score terms: current score" << current_score << " current free path length: " << current_free_path_length << " current_clearance: " << current_clearance << " Curvature score: " << curvature_score << std::endl;
+	   //std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length_score << " current_clearance: " << 10*current_clearance << " Curvature score: " << 5*curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
    if ( max_score < current_score )
     {
@@ -544,10 +561,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
       max_score = current_score;
     }
 
-    paths[i].curvature = current_curvature;
-    paths[i].clearance = current_clearance;
-    paths[i].free_path_length = current_free_path_length;
-    paths[i].score = current_score;
+
     visualization::DrawPathOption(current_curvature, current_score, current_clearance, local_viz_msg_);
   }
 
@@ -606,6 +620,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   if(optimal_path.free_path_length == -1000)
   {
     exit(0);
+
   }
   return optimal_path;
 }
@@ -613,7 +628,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
-  std::cout << "\n \n \n New iteration of run" << std::endl;
+  //std::cout << "\n \n \n New iteration of run" << std::endl;
 
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
@@ -642,7 +657,7 @@ void Navigation::Run() {
 
   // find best path based predicted location
   Eigen::Vector2f target_point{10,0};
-  best_path= find_optimal_path(40, -1.02, target_point);
+  best_path= find_optimal_path(40, -2.02, target_point);
 
   // decide wether to speed up stay the same or slow down based on distance to target
       updateSpeed(best_path);
@@ -654,7 +669,7 @@ void Navigation::Run() {
   // }
 
   // updatePointCloudToGlobalFrame();
-  std::cout << "Best curvature: " << drive_msg_.curvature << std::endl;
+  //std::cout << "Best curvature: " << drive_msg_.curvature << std::endl;
   visualization::DrawCross(robot_loc_, 3, 0x32a852,local_viz_msg_);
   DrawCar();
 

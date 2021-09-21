@@ -120,7 +120,7 @@ class Navigation {
 
   float findBestCurvature(unsigned int& total_curves, float& min_curve);
 
-  bool checkPoint(float angle, float curvature, float x, float y);
+  float checkPoint(float angle, float curvature, float x, float y);
 
   Eigen::Vector2f latency_compensation(const float& latency, unsigned int iterations);
 
@@ -133,10 +133,10 @@ class Navigation {
   //max = pi/2
   float max_curve = M_PI_2;
 
-  float car_length = 0.40;
-  float car_width = 0.23;
+  float car_length = 0.45;
+  float car_width = 0.27;
   float car_base_length = 0.32;
-  float margin = 0.1;
+  float margin = 0.12;
 
 
  private:
