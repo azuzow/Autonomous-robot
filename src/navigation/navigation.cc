@@ -157,21 +157,21 @@ void Navigation::updateSpeed(PathOption optimal_path){
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
   //std::cout<<"distance remaining "<<distance<<std::endl;
   //std::cout<<speed<<" "<<max_speed<<" "<<distance<< " " << robot_omega_ << " " << x << " " << y << std::endl;
-  if( (robot_vel_.x()<=0)  && (distance_needed_to_stop>=distance) ){
-    //std::cout<<"stopped"<<std::endl;
+  if( (speed<=0)  && (distance_needed_to_stop>=distance*.9) ){
+    // std::cout<<"stopped"<<std::endl;
     drive_msg_.velocity=0;
     exit(0);
   }
   else if (distance_needed_to_stop>=0.9*distance)
   {
     // decelerate
-    ///std::cout<<speed<<"decelerating"<<std::endl;
+    // std::cout<<speed<<"decelerating"<<std::endl;
     drive_msg_.velocity=speed-(max_deceleration_magnitude*1/20);
     // exit(0);
   }
   else if(speed<max_speed && distance>0  ){
 
-    //std::cout<<"accelerating"<<std::endl;
+    // std::cout<<"accelerating"<<std::endl;
     drive_msg_.velocity=speed+max_acceleration_magnitude;
     if (drive_msg_.velocity > max_speed)
     {
@@ -517,10 +517,10 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     current_free_path_length = free_path_pair.first;
     //float current_free_path_length_score=0;
-    if (current_free_path_length<distance_needed_to_stop){
+    if (current_free_path_length<distance_needed_to_stop || current_free_path_length<.3){
       //std::cout<<"free path < distance needed to stop "<<current_curvature<<std::endl;
       //current_free_path_length_score=-100000000;
-      current_free_path_length=-1000000000;
+      current_free_path_length=-10;
     }
     
     // if(current_free_path_length < 0.3)
@@ -537,7 +537,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     // current_length_and_angle.second *= .9;
 
     current_clearance = findNearestPoint( current_curvature, free_path_pair.second );
-    if(current_clearance>3){
+    if(current_clearance>3|| current_free_path_length<.3){
       current_clearance=0;
     }
     // if (current_clearance < 0.1)`
@@ -547,9 +547,9 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     // current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = 5 * current_free_path_length + 4 * curvature_score + 2 * current_clearance;
+    current_score = 5 * current_free_path_length + 4 * curvature_score + 3 * current_clearance;
 
-	   //std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length_score << " current_clearance: " << 10*current_clearance << " Curvature score: " << 5*curvature_score << std::endl;
+	   std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length << " current_clearance: " << 3*current_clearance << " Curvature score: " << 4*curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
    if ( max_score < current_score )
     {
@@ -562,7 +562,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     }
 
 
-    visualization::DrawPathOption(current_curvature, current_score, current_clearance, local_viz_msg_);
+    visualization::DrawPathOption(current_curvature, current_free_path_length, current_clearance, local_viz_msg_);
   }
 
   /** for(unsigned int i =0; i<total_curves;i++)
@@ -616,7 +616,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   }
    ***/
 
-  //std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<< std::endl;
+  std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<< std::endl;
   if(optimal_path.free_path_length == -1000)
   {
     exit(0);
