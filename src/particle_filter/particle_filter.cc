@@ -29,6 +29,7 @@
 #include "shared/math/geometry.h"
 #include "shared/math/line2d.h"
 #include "shared/math/math_util.h"
+#include <math.h>
 #include "shared/util/timer.h"
 
 #include "config_reader/config_reader.h"
@@ -164,9 +165,25 @@ void ParticleFilter::Predict(const Vector2f& odom_loc,
   // You will need to use the Gaussian random number generator provided. For
   // example, to generate a random number from a Gaussian with mean 0, and
   // standard deviation 2:
+
+
   float x = rng_.Gaussian(0.0, 2.0);
-  printf("Random number drawn from Gaussian distribution with 0 mean and "
-         "standard deviation of 2 : %f\n", x);
+  float y = rng_.Gaussian(0.0, 2.0);
+  float theta = rng_.Gaussian(0.0, 2.0);
+
+  //not sure if this is right calc for delta X & delta y
+  float deltaX = odom_loc[0] - prev_odom_loc[0];
+  float deltay = odom_loc[1] - prev_odom_loc[1];
+  float deltaTheta = odom_angle - prev_odom_angle_;
+
+  float d = sqrt(pow(deltaX, 2) + pow(deltaY, 2));
+
+  prev_odom_loc[0] += d * cos(odom_angle) + x;
+  prev_odom_loc[1] += d * cos(odom_angle) + y;
+  prev_odom_angle_ += d * cos(odom_angle) + y;  
+
+  ///printf("Random number drawn from Gaussian distribution with 0 mean and "
+   ///      "standard deviation of 2 : %f\n", x);
 }
 
 void ParticleFilter::Initialize(const string& map_file,
