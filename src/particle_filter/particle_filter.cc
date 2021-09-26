@@ -171,7 +171,7 @@ void ParticleFilter::Predict(const Vector2f& odom_loc,
   float y = rng_.Gaussian(0.0, 2.0);
   float theta = rng_.Gaussian(0.0, 2.0);
 
-  //not sure if this is right calc for delta X & delta y
+  //not sure if this is the right math for delta X & delta y; need to review later
   float deltaX = odom_loc[0] - prev_odom_loc[0];
   float deltay = odom_loc[1] - prev_odom_loc[1];
   float deltaTheta = odom_angle - prev_odom_angle_;
@@ -179,8 +179,8 @@ void ParticleFilter::Predict(const Vector2f& odom_loc,
   float d = sqrt(pow(deltaX, 2) + pow(deltaY, 2));
 
   prev_odom_loc[0] += d * cos(odom_angle) + x;
-  prev_odom_loc[1] += d * cos(odom_angle) + y;
-  prev_odom_angle_ += d * cos(odom_angle) + y;  
+  prev_odom_loc[1] += d * sin(odom_angle) + y;
+  prev_odom_angle_ += odom_angle + theta;  
 
   ///printf("Random number drawn from Gaussian distribution with 0 mean and "
    ///      "standard deviation of 2 : %f\n", x);
