@@ -152,6 +152,31 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
   // A new laser scan observation is available (in the laser frame)
   // Call the Update and Resample steps as necessary.
 }
+void TransformParticle(const  Eigen::Vector2f& transform, const float& rotation,const float& k1,const float& k2,const float& k3,const float& k4){
+  //k1 : translation error from translation
+  //k2 : rotation error from translation
+  //k3 : rotation error from rotation
+  //k4 : translation error from rotation
+
+  //k1 and k2 should be larger than k3 and k4 to create a oval that is longer along the x axis
+ 
+    
+    double magnitude_of_transform = sqrt((transform.x()*transform.x())+(transform.y()*transform.y()) );
+    double magnitude_of_rotation = abs(rotation);
+    //adding some constant to k1 and k2 to make the the probability density contour more oval like
+    double x_translation_error_stdev= (k1)*magnitude_of_transform+ (k2)*magnitude_of_rotation;
+    double y_translation_error_stdev= k1*magnitude_of_transform+ k2*magnitude_of_rotation;
+    double rotation_error_stdev= k3*magnitude_of_transform+ k4*magnitude_of_rotation;
+
+
+    double epsilon_x= rng_.Gaussian(0.0, x_translation_error_stdev);
+    double epsilon_y= rng_.Gaussian(0.0, y_translation_error_stdev);
+    double epsilon_theta=rng_.Gaussian(0.0, rotation_error_stdev);
+    particle.loc.x() += transform+ epsilon_x;
+    particle.loc.y() += transform+ epsilon_y;
+    particle.angle()+= rotation+epsilon_theta
+
+}
 
 void ParticleFilter::Predict(const Vector2f& odom_loc,
                              const float odom_angle) {
@@ -160,6 +185,16 @@ void ParticleFilter::Predict(const Vector2f& odom_loc,
   // Implement the motion model predict step here, to propagate the particles
   // forward based on odometry.
 
+   for(auto& particle: particles_){
+    // not sure if this should be the partciles angle or the last odometry angle
+    Eigen::Rotation2Df rotation=(-particle.angle);
+    Eigen::Vector2f deltaTransformBaseLink= rotation*(odom_loc-prev_odom_loc);
+
+    float deltaTransformAngle = odom_angle - prev_odom_angle_;
+
+
+    TransformParticles(deltaTransformBaseLink,deltaTransformAngle,0.1,0.1,0.1,0.1);
+    }
 
   // You will need to use the Gaussian random number generator provided. For
   // example, to generate a random number from a Gaussian with mean 0, and
@@ -175,6 +210,19 @@ void ParticleFilter::Initialize(const string& map_file,
   // The "set_pose" button on the GUI was clicked, or an initialization message
   // was received from the log. Initialize the particles accordingly, e.g. with
   // some distribution around the provided location and angle.
+
+    int total_particles=num_particles
+    for(&auto i: total_particles){
+
+      Particle particle;
+
+      particle.loc.x() = loc.x()+rng_.Gaussian(0.0, 0.05);
+      particle.loc.y() = loc.y()+rng_.Gaussian(0.0, 0.05);
+      //angle within theta of 30
+      particle.angle = angle+rng_.Gaussian(0.0, M_PI/6);
+      particle.weight = (1.0)/num_particles;
+      particles_.push_back(particle)
+  }
   map_.Load(map_file);
 }
 
@@ -191,3 +239,5 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr,
 
 
 }  // namespace particle_filter
+
+
