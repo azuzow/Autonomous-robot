@@ -82,7 +82,7 @@ namespace particle_filter {
   // Fill in the entries of scan using array writes, e.g. scan[i] = ...
 
   // .norm() of vector is magnitude
-    float magnitude = loc.norm();
+    // float magnitude = loc.norm();
     Eigen::Vector2f lazer_offset(cos(angle),sin(angle));
     lazer_offset=lazer_offset*0.2;
     Eigen::Vector2f lazer_loc = loc+lazer_offset;
@@ -97,53 +97,45 @@ namespace particle_filter {
       ray_end*=range_max;
       line2f current_ray(ray_start.x(), ray_start.y(), ray_end.x(), ray_end.y());
       current_ray_angle+=angle_increment;
-      
+
       // The line segments in the map are stored in the `map_.lines` variable. You
       // can iterate through them as:
       for (size_t j = 0; j < map_.lines.size(); ++j) {
         const line2f map_line = map_.lines[j];
-      // The line2f class has helper functions that will be useful.
-      // You can create a new line segment instance as follows, for :
-      line2f my_line(1, 2, 3, 4); // Line segment from (1,2) to (3.4).
-      // Access the end points using `.p0` and `.p1` members:
-      printf("P0: %f, %f P1: %f,%f\n", 
-       my_line.p0.x(),
-       my_line.p0.y(),
-       my_line.p1.x(),
-       my_line.p1.y());
+        Eigen::Vector2f closest_point(0,0);
+        Eigen::Vector2f intersection_point(0,0);  
+        bool intersects = map_line.Intersection(current_ray, &intersection_point);
+        if (intersects) {
 
-      // Check for intersections:
-      bool intersects = map_line.Intersects(my_line);
-      // You can also simultaneously check for intersection, and return the point
-      // of intersection:
-      Vector2f intersection_point; // Return variable
-      intersects = map_line.Intersection(my_line, &intersection_point);
-      if (intersects) {
-        printf("Intersects at %f,%f\n", 
-         intersection_point.x(),
-         intersection_point.y());
-      } else {
-        printf("No intersection\n");
+          float distance = sqrt(pow(intersection_point.x()-lazer_loc.x(),2)+pow(intersection_point.y()-lazer_loc.y(),2));
+          float closest_point_distance = sqrt(pow(intersection_point.x()-closest_point.x(),2)+pow(intersection_point.y()-closest_point.y(),2));
+          if(distance<closest_point_distance){
+            closest_point=intersection_point;
+          }
+        } else {
+          printf("No intersection\n");
+        }
+
+        scan[i]=closest_point;
       }
-    }
    // scan[i] = Vector2f(0, 0);
+    }
   }
-}
 
-void ParticleFilter::Update(const vector<float>& ranges,
-  float range_min,
-  float range_max,
-  float angle_min,
-  float angle_max,
-  Particle* p_ptr) {
+  void ParticleFilter::Update(const vector<float>& ranges,
+    float range_min,
+    float range_max,
+    float angle_min,
+    float angle_max,
+    Particle* p_ptr) {
   // Implement the update step of the particle filter here.
   // You will have to use the `GetPredictedPointCloud` to predict the expected
   // observations for each particle, and assign weights to the particles based
   // on the observation likelihood computed by relating the observation to the
   // predicted point cloud.
-}
+  }
 
-void ParticleFilter::Resample() {
+  void ParticleFilter::Resample() {
   // Resample the particles, proportional to their weights.
   // The current particles are in the `particles_` variable. 
   // Create a variable to store the new particles, and when done, replace the
@@ -156,20 +148,20 @@ void ParticleFilter::Resample() {
 
   // You will need to use the uniform random number generator provided. For
   // example, to generate a random number between 0 and 1:
-  float x = rng_.UniformRandom(0, 1);
-  printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
-   x);
-}
+    float x = rng_.UniformRandom(0, 1);
+    printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
+     x);
+  }
 
-void ParticleFilter::ObserveLaser(const vector<float>& ranges,
-  float range_min,
-  float range_max,
-  float angle_min,
-  float angle_max) {
+  void ParticleFilter::ObserveLaser(const vector<float>& ranges,
+    float range_min,
+    float range_max,
+    float angle_min,
+    float angle_max) {
   // A new laser scan observation is available (in the laser frame)
   // Call the Update and Resample steps as necessary.
-}
-void TransformParticle(const  Eigen::Vector2f& transform, const float& rotation,const float& k1,const float& k2,const float& k3,const float& k4){
+  }
+  void ParticleFilter::TransformParticle(Particle& particle,const Eigen::Vector2f& transform, const float& rotation,const float& k1,const float& k2,const float& k3,const float& k4){
   //k1 : translation error from translation
   //k2 : rotation error from translation
   //k3 : rotation error from rotation
@@ -178,47 +170,49 @@ void TransformParticle(const  Eigen::Vector2f& transform, const float& rotation,
   //k1 and k2 should be larger than k3 and k4 to create a oval that is longer along the x axis
 
 
-  double magnitude_of_transform = sqrt((transform.x()*transform.x())+(transform.y()*transform.y()) );
-  double magnitude_of_rotation = abs(rotation);
+    float magnitude_of_transform = sqrt((transform.x()*transform.x())+(transform.y()*transform.y()) );
+    float magnitude_of_rotation = abs(rotation);
     //adding some constant to k1 and k2 to make the the probability density contour more oval like
-  double x_translation_error_stdev= (k1)*magnitude_of_transform+ (k2)*magnitude_of_rotation;
-  double y_translation_error_stdev= k1*magnitude_of_transform+ k2*magnitude_of_rotation;
-  double rotation_error_stdev= k3*magnitude_of_transform+ k4*magnitude_of_rotation;
+    float x_translation_error_stdev= (k1)*magnitude_of_transform+ (k2)*magnitude_of_rotation;
+    float y_translation_error_stdev= k1*magnitude_of_transform+ k2*magnitude_of_rotation;
+    float rotation_error_stdev= k3*magnitude_of_transform+ k4*magnitude_of_rotation;
 
+    // std::cout<<magnitude_of_transform<<magnitude_of_rotation<<x_translation_error_stdev<<y_translation_error_stdev<<rotation_error_stdev<<std::endl;
+    float epsilon_x= rng_.Gaussian(0.0, x_translation_error_stdev);
+    float epsilon_y= rng_.Gaussian(0.0, y_translation_error_stdev);
+    float epsilon_theta=rng_.Gaussian(0.0, rotation_error_stdev);
 
-  double epsilon_x= rng_.Gaussian(0.0, x_translation_error_stdev);
-  double epsilon_y= rng_.Gaussian(0.0, y_translation_error_stdev);
-  double epsilon_theta=rng_.Gaussian(0.0, rotation_error_stdev);
-  particle.loc.x() += transform+ epsilon_x;
-  particle.loc.y() += transform+ epsilon_y;
-  particle.angle()+= rotation+epsilon_theta
+    particle.loc.x() += transform.x()+ epsilon_x;
+    particle.loc.y() += transform.y()+ epsilon_y;
+    // not sure if this is correct either
+    particle.angle+= rotation+epsilon_theta;
 
-}
+  }
 
-void ParticleFilter::Predict(const Vector2f& odom_loc,
- const float odom_angle) {
+  void ParticleFilter::Predict(const Vector2f& odom_loc,
+   const float odom_angle) {
   // Implement the predict step of the particle filter here.
   // A new odometry value is available (in the odom frame)
   // Implement the motion model predict step here, to propagate the particles
   // forward based on odometry.
 
- for(auto& particle: particles_){
-    // not sure if this should be the partciles angle or the last odometry angle
-  Eigen::Rotation2Df rotation=(-particle.angle);
-  Eigen::Vector2f deltaTransformBaseLink= rotation*(-prev_odom_angle)*(odom_loc-prev_odom_loc);
+   for(auto& particle: particles_){
 
-  float deltaTransformAngle = odom_angle - prev_odom_angle_;
+    Eigen::Rotation2Df rotation(odom_angle-prev_odom_angle_);
+    Eigen::Vector2f deltaTransformBaseLink=  rotation * (odom_loc-prev_odom_loc_) ;
+    
+    float deltaTransformAngle = odom_angle - prev_odom_angle_;
 
 
-  TransformParticles(deltaTransformBaseLink,deltaTransformAngle,0.1,0.1,0.1,0.1);
-}
+    TransformParticle(particle,deltaTransformBaseLink,deltaTransformAngle,0.1,0.1,0.1,0.1);
+  }
 
   // You will need to use the Gaussian random number generator provided. For
   // example, to generate a random number from a Gaussian with mean 0, and
   // standard deviation 2:
-float x = rng_.Gaussian(0.0, 2.0);
-printf("Random number drawn from Gaussian distribution with 0 mean and "
- "standard deviation of 2 : %f\n", x);
+  float x = rng_.Gaussian(0.0, 2.0);
+  printf("Random number drawn from Gaussian distribution with 0 mean and "
+   "standard deviation of 2 : %f\n", x);
 }
 
 void ParticleFilter::Initialize(const string& map_file,
@@ -228,17 +222,18 @@ void ParticleFilter::Initialize(const string& map_file,
   // was received from the log. Initialize the particles accordingly, e.g. with
   // some distribution around the provided location and angle.
 
-  int total_particles=num_particles
-  for(&auto i: total_particles){
+  unsigned int total_particles=FLAGS_num_particles;
+
+  for(unsigned int i=0; i< total_particles; ++i){
 
     Particle particle;
 
-    particle.loc.x() = loc.x()+rng_.Gaussian(0.0, 0.05);
-    particle.loc.y() = loc.y()+rng_.Gaussian(0.0, 0.05);
+    particle.loc.x() = loc.x()+ rng_.Gaussian(0.0, 0.05);
+    particle.loc.y() = loc.y()+ rng_.Gaussian(0.0, 0.05);
       //angle within theta of 30
     particle.angle = angle+rng_.Gaussian(0.0, M_PI/6);
-    particle.weight = (1.0)/num_particles;
-    particles_.push_back(particle)
+    particle.weight = (1.0)/FLAGS_num_particles;
+    particles_.push_back(particle);
   }
   map_.Load(map_file);
 }
