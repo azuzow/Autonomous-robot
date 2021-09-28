@@ -69,6 +69,8 @@ namespace particle_filter {
     float angle_min,
     float angle_max,
     vector<Vector2f>* scan_ptr) {
+
+
     vector<Vector2f>& scan = *scan_ptr;
 
   // Compute what the predicted point cloud would be, if the car was at the pose
@@ -133,6 +135,19 @@ namespace particle_filter {
   // observations for each particle, and assign weights to the particles based
   // on the observation likelihood computed by relating the observation to the
   // predicted point cloud.
+
+    // void ParticleFilter::GetPredictedPointCloud(const Vector2f& loc,
+    // const float angle,
+    // int num_ranges,
+    // float range_min,
+    // float range_max,
+    // float angle_min,
+    // float angle_max,
+    // vector<Vector2f>* scan_ptr)
+    Particle& particle = *p_ptr;
+    std::cout<<particle.loc.x()<<" "<< particle.loc.y()<<std::endl;
+    std::vector<Eigen::Vector2f> predicted_pointCloud;
+    GetPredictedPointCloud(particle.loc,particle.angle,ranges.size(),range_min,range_max,angle_min,angle_max,&predicted_pointCloud);
   }
 
   void ParticleFilter::Resample() {
@@ -198,7 +213,7 @@ namespace particle_filter {
 
    for(auto& particle: particles_){
 
-    Eigen::Rotation2Df rotation(odom_angle-prev_odom_angle_);
+    Eigen::Rotation2Df rotation(-prev_odom_angle_);
     Eigen::Vector2f deltaTransformBaseLink=  rotation * (odom_loc-prev_odom_loc_) ;
     
     float deltaTransformAngle = odom_angle - prev_odom_angle_;
