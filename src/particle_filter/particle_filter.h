@@ -75,7 +75,7 @@ class ParticleFilter {
               Particle* p);
 
   // Resample particles.
-  void Resample();
+  std::vector<Particle> Resample();
   //helper function for transforming a individual particle
   void TransformParticle(Particle& particle,const Eigen::Vector2f& transform, const float& rotation,const float& k1,const float& k2,const float& k3,const float& k4);
   // For debugging: get predicted point cloud from current location.
@@ -92,6 +92,8 @@ class ParticleFilter {
 
   // List of particles being tracked.
   std::vector<Particle> particles_;
+
+  
 
   // Map of the environment.
   vector_map::VectorMap map_;

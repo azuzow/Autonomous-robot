@@ -150,7 +150,7 @@ namespace particle_filter {
     GetPredictedPointCloud(particle.loc,particle.angle,ranges.size(),range_min,range_max,angle_min,angle_max,&predicted_pointCloud);
   }
 
-  void ParticleFilter::Resample() {
+  std::vector<Particle> ParticleFilter::Resample() {
   // Resample the particles, proportional to their weights.
   // The current particles are in the `particles_` variable. 
   // Create a variable to store the new particles, and when done, replace the
@@ -163,9 +163,41 @@ namespace particle_filter {
 
   // You will need to use the uniform random number generator provided. For
   // example, to generate a random number between 0 and 1:
-    float x = rng_.UniformRandom(0, 1);
-    printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
-     x);
+
+  //compute sum of all particle weights
+  float totalWeightSum = 0;
+  for(auto& particle: particles_){
+    totalWeightSum += particle.weight;
+  }
+
+
+  unsigned int total_particles=FLAGS_num_particles;
+  float weightSum = 0;
+  std::vector<Vector2f> binSet;
+  for(unsigned int i=0; i< total_particles; ++i){
+
+      float start = weightSum;
+      weightSum += particles_[i].weight;
+      float end = weightSum / totalWeightSum;
+      Vector2f bin = Vector2f(start,end);
+      binSet.push_back(bin);
+  }
+
+  //pick a random number between 0 and 1
+  float x = rng_.UniformRandom(0, 1);
+
+  //new particle set
+  vector<Particle> newParticles_;
+  for(unsigned int = 0; i  < total_particles; i++){
+    if(binSet[i].x() < x && x < binSet[i].y ){
+        newParticles_.push_back(particles_[i])
+    }
+  }
+
+ //   printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
+  //   x);
+
+  return newParticles_;
   }
 
   void ParticleFilter::ObserveLaser(const vector<float>& ranges,
