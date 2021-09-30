@@ -183,16 +183,19 @@ namespace particle_filter {
       binSet.push_back(bin);
   }
 
-  //pick a random number between 0 and 1
-  float x = rng_.UniformRandom(0, 1);
 
   //new particle set
   vector<Particle> newParticles_;
+
+for(unsigned int = 0; i  < total_particles; i++){
+  //pick a random number between 0 and 1
+  float randNum = rng_.UniformRandom(0, 1);
   for(unsigned int = 0; i  < total_particles; i++){
-    if(binSet[i].x() < x && x < binSet[i].y ){
-        newParticles_.push_back(particles_[i])
+    if(binSet[i].x() < randNum && randNum < binSet[i].y ){
+      newParticles_.push_back(particles_[i])
     }
   }
+}
 
  //   printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
   //   x);
