@@ -150,7 +150,7 @@ namespace particle_filter {
     GetPredictedPointCloud(particle.loc,particle.angle,ranges.size(),range_min,range_max,angle_min,angle_max,&predicted_pointCloud);
   }
 
-  std::vector<Particle> ParticleFilter::Resample() {
+  void ParticleFilter::Resample() {
   // Resample the particles, proportional to their weights.
   // The current particles are in the `particles_` variable. 
   // Create a variable to store the new particles, and when done, replace the
@@ -171,6 +171,8 @@ namespace particle_filter {
   }
 
 
+  // use vectors to encode the width of each bin. 
+  // Width is equal to the weight of particle[i] proportional to the total sum of particle weights
   unsigned int total_particles=FLAGS_num_particles;
   float weightSum = 0;
   std::vector<Vector2f> binSet;
@@ -188,6 +190,9 @@ namespace particle_filter {
   vector<Particle> newParticles_;
   unsigned int j =0;
 
+//select a random value between 0 and 1 and  determine which bin it belongs to. 
+//Corresponding particle at bin will be resampled in the new particle set
+// Run this step N (number of particles in set) times 
 while(j  < total_particles){
   //pick a random number between 0 and 1
   float randNum = rng_.UniformRandom(0, 1);
@@ -202,7 +207,7 @@ while(j  < total_particles){
  //   printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
   //   x);
 
-  return newParticles_;
+  particles_ = newParticles_;
   }
 
   void ParticleFilter::ObserveLaser(const vector<float>& ranges,
