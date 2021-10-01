@@ -93,6 +93,8 @@ class ParticleFilter {
   // List of particles being tracked.
   std::vector<Particle> particles_;
 
+  
+
   // Map of the environment.
   vector_map::VectorMap map_;
 

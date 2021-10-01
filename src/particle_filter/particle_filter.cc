@@ -163,9 +163,51 @@ namespace particle_filter {
 
   // You will need to use the uniform random number generator provided. For
   // example, to generate a random number between 0 and 1:
-    float x = rng_.UniformRandom(0, 1);
-    printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
-     x);
+
+  //compute sum of all particle weights
+  float totalWeightSum = 0;
+  for(auto& particle: particles_){
+    totalWeightSum += particle.weight;
+  }
+
+
+  // use vectors to encode the width of each bin. 
+  // Width is equal to the weight of particle[i] proportional to the total sum of particle weights
+  unsigned int total_particles=FLAGS_num_particles;
+  float weightSum = 0;
+  std::vector<Vector2f> binSet;
+  for(unsigned int i=0; i< total_particles; ++i){
+
+      float start = weightSum;
+      weightSum += particles_[i].weight;
+      float end = weightSum / totalWeightSum;
+      Vector2f bin = Vector2f(start,end);
+      binSet.push_back(bin);
+  }
+
+
+  //new particle set
+  vector<Particle> newParticles_;
+  unsigned int j =0;
+
+//select a random value between 0 and 1 and  determine which bin it belongs to. 
+//Corresponding particle at bin will be resampled in the new particle set
+// Run this step N (number of particles in set) times 
+while(j  < total_particles){
+  //pick a random number between 0 and 1
+  float randNum = rng_.UniformRandom(0, 1);
+  for(unsigned int i = 0; i  < total_particles; i++){
+    if(binSet[i].x() < randNum && randNum < binSet[i].y() ){
+      newParticles_.push_back(particles_[i]);
+    }
+  }
+  j++;
+}
+
+ //   printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
+  //   x);
+
+  particles_ = newParticles_;
   }
 
   void ParticleFilter::ObserveLaser(const vector<float>& ranges,
