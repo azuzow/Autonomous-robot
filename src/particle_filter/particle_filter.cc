@@ -192,15 +192,16 @@ namespace particle_filter {
 
 //select a random value between 0 and 1 and  determine which bin it belongs to. 
 //Corresponding particle at bin will be resampled in the new particle set
-// Run this step N (number of particles in set) times 
+// Run this step N (number of particles in set) times
+float randNum = rng_.UniformRandom(0, 1); 
 while(j  < total_particles){
   //pick a random number between 0 and 1
-  float randNum = rng_.UniformRandom(0, 1);
   for(unsigned int i = 0; i  < total_particles; i++){
     if(binSet[i].x() < randNum && randNum < binSet[i].y() ){
       newParticles_.push_back(particles_[i]);
     }
   }
+  randNum += 1/total_particles;
   j++;
 }
 
