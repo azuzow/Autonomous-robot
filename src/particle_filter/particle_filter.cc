@@ -91,10 +91,15 @@ namespace particle_filter {
     float angle_range = angle_max-angle_min;
     float angle_increment= angle_range/float(num_ranges);
     float current_ray_angle = angle-angle_range;
+
+    // TODO: Global frame vs Local frame
+
     for (size_t i = 0; i < scan.size(); ++i) {
 
       Eigen::Vector2f ray_start(cos(current_ray_angle),sin(current_ray_angle));
       Eigen::Vector2f ray_end(cos(current_ray_angle),sin(current_ray_angle));
+
+      //TODO: We need to add lidar location here
       ray_start*=range_min;
       ray_end*=range_max;
       line2f current_ray(ray_start.x(), ray_start.y(), ray_end.x(), ray_end.y());
@@ -102,19 +107,26 @@ namespace particle_filter {
 
       // The line segments in the map are stored in the `map_.lines` variable. You
       // can iterate through them as:
-      for (size_t j = 0; j < map_.lines.size(); ++j) {
-        const line2f map_line = map_.lines[j];
-        Eigen::Vector2f closest_point(0,0);
-        Eigen::Vector2f intersection_point(0,0);  
-        bool intersects = map_line.Intersection(current_ray, &intersection_point);
-        if (intersects) {
 
+      Eigen::Vector2f closest_point(0,0);
+      Eigen::Vector2f intersection_point(0,0);
+
+      for (size_t j = 0; j < map_.lines.size(); ++j)
+      {
+        const line2f map_line = map_.lines[j];
+        bool intersects = map_line.Intersection(current_ray, &intersection_point);
+        if (intersects)
+        {
+          //TODO: Shouldn't we need to find distance with location and not lazer location. 
           float distance = sqrt(pow(intersection_point.x()-lazer_loc.x(),2)+pow(intersection_point.y()-lazer_loc.y(),2));
           float closest_point_distance = sqrt(pow(intersection_point.x()-closest_point.x(),2)+pow(intersection_point.y()-closest_point.y(),2));
-          if(distance<closest_point_distance){
+          if(distance<closest_point_distance)
+          {
             closest_point=intersection_point;
           }
-        } else {
+        }
+        else
+        {
           printf("No intersection\n");
         }
 
@@ -122,6 +134,18 @@ namespace particle_filter {
       }
    // scan[i] = Vector2f(0, 0);
     }
+  }
+
+
+  Vector2f ParticleFilter::convertToGlobalFrame(Vector2f local_frame_loc, float local_frame_angle, Vector2f point_in_local_frame)
+  {
+    Eigen::Vector2f lazer_offset(cos(local_frame_angle), sin(local_frame_angle));
+    Eigen::Vector2f global_location(0.0, 0.0);
+
+    global_location.x() = local_frame_loc.x() + point_in_local_frame.x()*cos(local_frame_angle) + point_in_local_frame.y()*sin(local_frame_angle);
+    global_location.y() = local_frame_loc.y() + point_in_local_frame.x()*( -sin(local_frame_angle) ) + point_in_local_frame.y()*cos( local_frame_angle );
+
+    return global_location;
   }
 
   void ParticleFilter::Update(const vector<float>& ranges,
@@ -144,71 +168,118 @@ namespace particle_filter {
     // float angle_min,
     // float angle_max,
     // vector<Vector2f>* scan_ptr)
+
+
     Particle& particle = *p_ptr;
     std::cout<<particle.loc.x()<<" "<< particle.loc.y()<<std::endl;
     std::vector<Eigen::Vector2f> predicted_pointCloud;
     GetPredictedPointCloud(particle.loc,particle.angle,ranges.size(),range_min,range_max,angle_min,angle_max,&predicted_pointCloud);
-  }
 
-  void ParticleFilter::Resample() {
-  // Resample the particles, proportional to their weights.
-  // The current particles are in the `particles_` variable. 
-  // Create a variable to store the new particles, and when done, replace the
-  // old set of particles:
-  // vector<Particle> new_particles';
-  // During resampling: 
-  //    new_particles.push_back(...)
-  // After resampling:
-  // particles_ = new_particles;
+    unsigned int i = 0;
+    double distance = 0;
 
-  // You will need to use the uniform random number generator provided. For
-  // example, to generate a random number between 0 and 1:
+    Eigen::Vector2f lazer_loc_local_frame(0.2, 0.0);
 
-  //compute sum of all particle weights
-  float totalWeightSum = 0;
-  for(auto& particle: particles_){
-    totalWeightSum += particle.weight;
-  }
+    Eigen::Vector2f lazer_loc = convertToGlobalFrame( particle.loc , particle.angle, lazer_loc_local_frame );
+    double log_prob = 0;
+    double prob = 0;
 
 
-  // use vectors to encode the width of each bin. 
-  // Width is equal to the weight of particle[i] proportional to the total sum of particle weights
-  unsigned int total_particles=FLAGS_num_particles;
-  float weightSum = 0;
-  std::vector<Vector2f> binSet;
-  for(unsigned int i=0; i< total_particles; ++i){
-
-      float start = weightSum;
-      weightSum += particles_[i].weight;
-      float end = weightSum / totalWeightSum;
-      Vector2f bin = Vector2f(start,end);
-      binSet.push_back(bin);
-  }
-
-
-  //new particle set
-  vector<Particle> newParticles_;
-  unsigned int j =0;
-
-//select a random value between 0 and 1 and  determine which bin it belongs to. 
-//Corresponding particle at bin will be resampled in the new particle set
-// Run this step N (number of particles in set) times 
-while(j  < total_particles){
-  //pick a random number between 0 and 1
-  float randNum = rng_.UniformRandom(0, 1);
-  for(unsigned int i = 0; i  < total_particles; i++){
-    if(binSet[i].x() < randNum && randNum < binSet[i].y() ){
-      newParticles_.push_back(particles_[i]);
+    for (i=0; i < predicted_pointCloud.size(); i++)
+    {
+      distance = sqrt( pow(predicted_pointCloud[i].x()-lazer_loc.x(),2) + pow(predicted_pointCloud[i].y()-lazer_loc.y(),2) );
+      if(ranges[i] < range_min)
+      {
+        continue;
+      }
+      else if(ranges[i] > range_max)
+      {
+        continue;
+      }
+      else if(ranges[i] < distance - short_distance )
+      {
+        prob = exp( - ( short_distance*short_distance ) / ( std_update_weight * std_update_weight ) );
+      }
+      else if( ranges[i] > distance + long_distance )
+      {
+        prob = exp( - ( long_distance*long_distance ) / ( std_update_weight * std_update_weight ) );
+      }
+      else
+      {
+        prob = exp( - ( pow( distance - ranges[i] , 2) ) / (std_update_weight * std_update_weight) );
+      }
+      log_prob += log(prob);
     }
+
+    particle.weight = exp(log_prob);
   }
-  j++;
+
+
+void ParticleFilter::Resample()
+{
+    // Resample the particles, proportional to their weights.
+    // The current particles are in the `particles_` variable.
+    // Create a variable to store the new particles, and when done, replace the
+    // old set of particles:
+    // vector<Particle> new_particles';
+    // During resampling:
+    //    new_particles.push_back(...)
+    // After resampling:
+    // particles_ = new_particles;
+
+    // You will need to use the uniform random number generator provided. For
+    // example, to generate a random number between 0 and 1:
+
+    //compute sum of all particle weights
+    float totalWeightSum = 0;
+    for(auto& particle: particles_)
+    {
+      totalWeightSum += particle.weight;
+    }
+
+
+    // use vectors to encode the width of each bin.
+    // Width is equal to the weight of particle[i] proportional to the total sum of particle weights
+    unsigned int total_particles=FLAGS_num_particles;
+    float weightSum = 0;
+    std::vector<Vector2f> binSet;
+    for(unsigned int i=0; i< total_particles; ++i)
+    {
+        float start = weightSum;
+        weightSum += particles_[i].weight;
+        float end = weightSum / totalWeightSum;
+        Vector2f bin = Vector2f(start,end);
+        binSet.push_back(bin);
+    }
+
+
+    //new particle set
+    vector<Particle> newParticles_;
+    unsigned int j =0;
+
+  //select a random value between 0 and 1 and  determine which bin it belongs to.
+  //Corresponding particle at bin will be resampled in the new particle set
+  // Run this step N (number of particles in set) times
+    while(j  < total_particles)
+    {
+      //pick a random number between 0 and 1
+      float randNum = rng_.UniformRandom(0, 1);
+      for(unsigned int i = 0; i  < total_particles; i++)
+      {
+        if(binSet[i].x() < randNum && randNum < binSet[i].y() )
+        {
+          newParticles_.push_back(particles_[i]);
+        }
+      }
+      j++;
+    }
+
+   //   printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
+    //   x);
+
+    particles_ = newParticles_;
 }
 
- //   printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
-  //   x);
-
-  particles_ = newParticles_;
-  }
 
   void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     float range_min,
@@ -218,6 +289,8 @@ while(j  < total_particles){
   // A new laser scan observation is available (in the laser frame)
   // Call the Update and Resample steps as necessary.
   }
+
+
   void ParticleFilter::TransformParticle(Particle& particle,const Eigen::Vector2f& transform, const float& rotation,const float& k1,const float& k2,const float& k3,const float& k4){
   //k1 : translation error from translation
   //k2 : rotation error from translation
@@ -257,7 +330,7 @@ while(j  < total_particles){
 
     Eigen::Rotation2Df rotation(-prev_odom_angle_);
     Eigen::Vector2f deltaTransformBaseLink=  rotation * (odom_loc-prev_odom_loc_) ;
-    
+
     float deltaTransformAngle = odom_angle - prev_odom_angle_;
 
 
@@ -295,7 +368,7 @@ void ParticleFilter::Initialize(const string& map_file,
   map_.Load(map_file);
 }
 
-void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr, 
+void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr,
  float* angle_ptr) const {
   Vector2f& loc = *loc_ptr;
   float& angle = *angle_ptr;
@@ -308,5 +381,3 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr,
 
 
 }  // namespace particle_filter
-
-

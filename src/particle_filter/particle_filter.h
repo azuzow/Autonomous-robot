@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <vector>
+#include <math.h>
 
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
@@ -88,12 +89,16 @@ class ParticleFilter {
                               float angle_max,
                               std::vector<Eigen::Vector2f>* scan);
 
+
+    Eigen::Vector2f convertToGlobalFrame(Eigen::Vector2f local_frame_loc, float local_frame_angle, Eigen::Vector2f point_in_local_frame);
+
+
  private:
 
   // List of particles being tracked.
   std::vector<Particle> particles_;
 
-  
+
 
   // Map of the environment.
   vector_map::VectorMap map_;
@@ -105,6 +110,10 @@ class ParticleFilter {
   Eigen::Vector2f prev_odom_loc_;
   float prev_odom_angle_;
   bool odom_initialized_;
+
+  float std_update_weight = 0.5;
+  float short_distance = 0.5;
+  float long_distance = 0.5;
 };
 }  // namespace slam
 
