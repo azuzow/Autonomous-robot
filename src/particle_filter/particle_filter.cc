@@ -90,11 +90,12 @@ namespace particle_filter {
     Eigen::Vector2f lazer_loc = loc+lazer_offset;
     float angle_range = angle_max-angle_min;
     float angle_increment= angle_range/float(num_ranges);
-    float current_ray_angle = angle-angle_range;
+    float current_ray_angle = angle - angle_range;
 
     // TODO: Global frame vs Local frame
 
-    for (size_t i = 0; i < scan.size(); ++i) {
+    for (size_t i = 0; i < scan.size(); ++i)
+    {
 
       Eigen::Vector2f ray_start(cos(current_ray_angle),sin(current_ray_angle));
       Eigen::Vector2f ray_end(cos(current_ray_angle),sin(current_ray_angle));
@@ -117,7 +118,7 @@ namespace particle_filter {
         bool intersects = map_line.Intersection(current_ray, &intersection_point);
         if (intersects)
         {
-          //TODO: Shouldn't we need to find distance with location and not lazer location. 
+          //TODO: Shouldn't we need to find distance with location and not lazer location.
           float distance = sqrt(pow(intersection_point.x()-lazer_loc.x(),2)+pow(intersection_point.y()-lazer_loc.y(),2));
           float closest_point_distance = sqrt(pow(intersection_point.x()-closest_point.x(),2)+pow(intersection_point.y()-closest_point.y(),2));
           if(distance<closest_point_distance)
@@ -142,8 +143,8 @@ namespace particle_filter {
     Eigen::Vector2f lazer_offset(cos(local_frame_angle), sin(local_frame_angle));
     Eigen::Vector2f global_location(0.0, 0.0);
 
-    global_location.x() = local_frame_loc.x() + point_in_local_frame.x()*cos(local_frame_angle) + point_in_local_frame.y()*sin(local_frame_angle);
-    global_location.y() = local_frame_loc.y() + point_in_local_frame.x()*( -sin(local_frame_angle) ) + point_in_local_frame.y()*cos( local_frame_angle );
+    global_location.x() = local_frame_loc.x() + point_in_local_frame.x()*cos(local_frame_angle);
+    global_location.y() = local_frame_loc.y() + point_in_local_frame.x()*sin(local_frame_angle);
 
     return global_location;
   }
@@ -211,7 +212,7 @@ namespace particle_filter {
       log_prob += log(prob);
     }
 
-    particle.weight = exp(log_prob);
+    particle.log_weight += log_prob;
   }
 
 
@@ -232,10 +233,25 @@ void ParticleFilter::Resample()
 
     //compute sum of all particle weights
     float totalWeightSum = 0;
-    for(auto& particle: particles_)
+    double max_log_prob = -10000000.0;
+
+    for(unsigned int i=0; i<particles_.size(); i++)
     {
-      totalWeightSum += particle.weight;
+      max_log_prob = std::max(max_log_prob, particles_[i].log_weight);
     }
+
+    for(unsigned int i=0; i<particles_.size(); i++)
+    {
+      particles_[i].log_weight -= max_log_prob;
+      particles_[i].weight = exp(particles_[i].log_weight);
+      totalWeightSum += particles_[i].weight;
+    }
+
+
+    // for(auto& particle: particles_)
+    // {
+    //   totalWeightSum += particle.weight;
+    // }
 
 
     // use vectors to encode the width of each bin.
@@ -285,9 +301,19 @@ void ParticleFilter::Resample()
     float range_min,
     float range_max,
     float angle_min,
-    float angle_max) {
+    float angle_max)
+{
   // A new laser scan observation is available (in the laser frame)
   // Call the Update and Resample steps as necessary.
+
+    unsigned int i = 0;
+    for(i=0; i < particles_.size(); i++)
+    {
+      Update( ranges, range_min, range_max, angle_min, angle_max, &particles_[i] );
+    }
+
+    Resample();
+
   }
 
 
@@ -363,6 +389,7 @@ void ParticleFilter::Initialize(const string& map_file,
       //angle within theta of 30
     particle.angle = angle+rng_.Gaussian(0.0, M_PI/6);
     particle.weight = (1.0)/FLAGS_num_particles;
+    particle.log_weight = log( particle.weight );
     particles_.push_back(particle);
   }
   map_.Load(map_file);
@@ -375,8 +402,31 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr,
   // Compute the best estimate of the robot's location based on the current set
   // of particles. The computed values must be set to the `loc` and `angle`
   // variables to return them. Modify the following assignments:
-  loc = Vector2f(0, 0);
-  angle = 0;
+
+  double max_log_prob = 0.0, totalWeightSum = 0.0, p_weights[int(FLAGS_num_particles)];
+
+  for(unsigned int i=0; i<particles_.size(); i++)
+  {
+    max_log_prob = std::max(max_log_prob, particles_[i].log_weight);
+  }
+
+  for(unsigned int i=0; i<particles_.size(); i++)
+  {
+    p_weights[i] = exp(particles_[i].log_weight - max_log_prob);
+    totalWeightSum += p_weights[i];
+  }
+
+  Eigen::Vector2f next_robot_loc(0.0, 0.0);
+  double next_robot_angle = 0.0;
+
+  for(unsigned int i=0; i<particles_.size(); i++)
+  {
+    next_robot_loc += ( p_weights[i] / totalWeightSum )*particles_[i].loc;
+    next_robot_angle += ( p_weights[i] / totalWeightSum )*particles_[i].angle;
+  }
+  loc = next_robot_loc;
+  angle = next_robot_angle;
+
 }
 
 

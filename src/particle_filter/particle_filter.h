@@ -38,6 +38,7 @@ struct Particle {
   Eigen::Vector2f loc;
   float angle;
   double weight;
+  double log_weight;
 };
 
 class ParticleFilter {
