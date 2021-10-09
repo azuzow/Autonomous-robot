@@ -213,6 +213,7 @@ namespace particle_filter {
     }
 
     particle.log_weight += log_prob;
+    // particle.weight += exp(log_prob);
   }
 
 
@@ -305,6 +306,11 @@ void ParticleFilter::Resample()
 {
   // A new laser scan observation is available (in the laser frame)
   // Call the Update and Resample steps as necessary.
+
+  if(odom_initialized_ == false)
+  {
+    return;
+  }
 
     unsigned int i = 0;
     for(i=0; i < particles_.size(); i++)
@@ -413,7 +419,8 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr,
   for(unsigned int i=0; i<particles_.size(); i++)
   {
     p_weights[i] = exp(particles_[i].log_weight - max_log_prob);
-    totalWeightSum += p_weights[i];
+    // p_weights[i] = particles_[i].weight;
+    totalWeightSum += particles_[i].weight;
   }
 
   Eigen::Vector2f next_robot_loc(0.0, 0.0);
