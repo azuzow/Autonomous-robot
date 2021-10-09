@@ -101,8 +101,8 @@ namespace particle_filter {
       Eigen::Vector2f ray_end(cos(current_ray_angle),sin(current_ray_angle));
 
       //TODO: We need to add lidar location here
-      ray_start*=range_min;
-      ray_end*=range_max;
+      ray_start= ray_start*range_min + lazer_loc;
+      ray_end= ray_start*range_max + lazer_loc;
       line2f current_ray(ray_start.x(), ray_start.y(), ray_end.x(), ray_end.y());
       current_ray_angle+=angle_increment;
 
