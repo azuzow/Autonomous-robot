@@ -79,7 +79,7 @@ class ParticleFilter {
   // Resample particles.
   void Resample();
   //helper function for transforming a individual particle
-  void TransformParticle(Particle& particle,const Eigen::Vector2f& transform, const float& rotation,const float& k1,const float& k2,const float& k3,const float& k4);
+  void TransformParticle(Particle* particle_pointer,const Eigen::Vector2f& transform, const float& rotation,const float& k1,const float& k2,const float& k3,const float& k4);
   // For debugging: get predicted point cloud from current location.
   void GetPredictedPointCloud(const Eigen::Vector2f& loc,
                               const float angle,
@@ -115,6 +115,7 @@ class ParticleFilter {
   float std_update_weight = 0.5;
   float short_distance = 0.5;
   float long_distance = 0.5;
+  Eigen::Vector2f last_update;
 };
 }  // namespace slam
 

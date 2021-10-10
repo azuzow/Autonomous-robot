@@ -118,6 +118,7 @@ namespace particle_filter {
         bool intersects = map_line.Intersection(current_ray, &intersection_point);
         if (intersects)
         {
+          // printf("Intersection\n" );
           //TODO: Shouldn't we need to find distance with location and not lazer location.
           float distance = sqrt(pow(intersection_point.x()-lazer_loc.x(),2)+pow(intersection_point.y()-lazer_loc.y(),2));
           float closest_point_distance = sqrt(pow(intersection_point.x()-closest_point.x(),2)+pow(intersection_point.y()-closest_point.y(),2));
@@ -128,7 +129,7 @@ namespace particle_filter {
         }
         else
         {
-          printf("No intersection\n");
+          // printf("No intersection\n");
         }
 
         scan[i]=closest_point;
@@ -241,6 +242,8 @@ void ParticleFilter::Resample()
       max_log_prob = std::max(max_log_prob, particles_[i].log_weight);
     }
 
+    // std::cout << "after finding max_log_prob" << particles_.size() << std::endl;
+
     for(unsigned int i=0; i<particles_.size(); i++)
     {
       particles_[i].log_weight -= max_log_prob;
@@ -298,7 +301,7 @@ void ParticleFilter::Resample()
 }
 
 
-  void ParticleFilter::ObserveLaser(const vector<float>& ranges,
+void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     float range_min,
     float range_max,
     float angle_min,
@@ -312,6 +315,15 @@ void ParticleFilter::Resample()
     return;
   }
 
+  std::cout << odom_initialized_ << " In update " << std::endl;
+
+  double distance_from_last_update = (prev_odom_loc_ - last_update).norm();
+
+  if (distance_from_last_update < 0.1)
+  {
+    return;
+  }
+
     unsigned int i = 0;
     for(i=0; i < particles_.size(); i++)
     {
@@ -319,11 +331,11 @@ void ParticleFilter::Resample()
     }
 
     Resample();
-
+    last_update = prev_odom_loc_;
   }
 
 
-  void ParticleFilter::TransformParticle(Particle& particle,const Eigen::Vector2f& transform, const float& rotation,const float& k1,const float& k2,const float& k3,const float& k4){
+  void ParticleFilter::TransformParticle(Particle* particle_pointer,const Eigen::Vector2f& transform, const float& rotation,const float& k1,const float& k2,const float& k3,const float& k4){
   //k1 : translation error from translation
   //k2 : rotation error from translation
   //k3 : rotation error from rotation
@@ -331,6 +343,7 @@ void ParticleFilter::Resample()
 
   //k1 and k2 should be larger than k3 and k4 to create a oval that is longer along the x axis
 
+  Particle& particle = *particle_pointer;
 
     float magnitude_of_transform = sqrt((transform.x()*transform.x())+(transform.y()*transform.y()) );
     float magnitude_of_rotation = abs(rotation);
@@ -358,16 +371,26 @@ void ParticleFilter::Resample()
   // Implement the motion model predict step here, to propagate the particles
   // forward based on odometry.
 
-   for(auto& particle: particles_){
+  if(odom_initialized_)
+  {
+     for(auto& particle: particles_)
+     {
 
-    Eigen::Rotation2Df rotation(-prev_odom_angle_);
-    Eigen::Vector2f deltaTransformBaseLink=  rotation * (odom_loc-prev_odom_loc_) ;
+       float deltaTransformAngle = odom_angle - prev_odom_angle_;
+        Eigen::Rotation2Df rotation( deltaTransformAngle );
+        Eigen::Vector2f deltaTransformBaseLink=  rotation * (odom_loc-prev_odom_loc_) ;
 
-    float deltaTransformAngle = odom_angle - prev_odom_angle_;
-
-
-    TransformParticle(particle,deltaTransformBaseLink,deltaTransformAngle,0.1,0.1,0.1,0.1);
-  }
+        TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.1, 0.1, 0.1, 0.1);
+      }
+      prev_odom_loc_ = odom_loc;
+      prev_odom_angle_ = odom_angle;
+    }
+    else
+    {
+      // odom_initialized_ = true;
+      prev_odom_loc_ = odom_loc;
+      prev_odom_angle_ = odom_angle;
+    }
 
   // You will need to use the Gaussian random number generator provided. For
   // example, to generate a random number from a Gaussian with mean 0, and
@@ -379,12 +402,16 @@ void ParticleFilter::Resample()
 
 void ParticleFilter::Initialize(const string& map_file,
   const Vector2f& loc,
-  const float angle) {
+  const float angle)
+  {
   // The "set_pose" button on the GUI was clicked, or an initialization message
   // was received from the log. Initialize the particles accordingly, e.g. with
   // some distribution around the provided location and angle.
 
   unsigned int total_particles=FLAGS_num_particles;
+  odom_initialized_ = false;
+
+  std::cout << "In initialization" << std::endl;
 
   for(unsigned int i=0; i< total_particles; ++i){
 
@@ -433,6 +460,8 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr,
   }
   loc = next_robot_loc;
   angle = next_robot_angle;
+
+  std::cout << loc << " location and angle in get location " << angle << endl;
 
 }
 
