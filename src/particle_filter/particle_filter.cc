@@ -42,11 +42,12 @@ using std::endl;
 using std::string;
 using std::swap;
 using std::vector;
+using math_util::AngleDiff;
 using Eigen::Vector2f;
 using Eigen::Vector2i;
 using vector_map::VectorMap;
 
-DEFINE_double(num_particles, 50, "Number of particles");
+DEFINE_double(num_particles, 20, "Number of particles");
 
 namespace particle_filter {
 
@@ -398,14 +399,14 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
 
   if(odom_initialized_)
   {
+    float deltaTransformAngle = AngleDiff(odom_angle, prev_odom_angle_);
      for(auto& particle: particles_)
      {
 
-       float deltaTransformAngle = odom_angle - prev_odom_angle_;
-        Eigen::Rotation2Df rotation( -prev_odom_angle_ );
-        Eigen::Vector2f deltaTransformBaseLink=  rotation * (odom_loc-prev_odom_loc_) ;
+        Eigen::Rotation2Df rotation( AngleDiff(particle.angle, prev_odom_angle_) );
+        Eigen::Vector2f deltaTransformBaseLink =  rotation * (odom_loc-prev_odom_loc_) ;
 
-        TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.4, 0.02, 0.2, 0.4);
+        TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.01, 0.01, 0.01, 0.01);
       }
       prev_odom_loc_ = odom_loc;
       prev_odom_angle_ = odom_angle;
@@ -444,7 +445,7 @@ void ParticleFilter::Initialize(const string& map_file,
     particle.loc.x() = loc.x()+ rng_.Gaussian(0.0, 0.05);
     particle.loc.y() = loc.y()+ rng_.Gaussian(0.0, 0.05);
       //angle within theta of 30
-    particle.angle = angle+rng_.Gaussian(0.0, M_PI/6);
+    particle.angle = angle+rng_.Gaussian(0.0, M_PI/32);
     particle.weight = (1.0)/FLAGS_num_particles;
     particle.log_weight = log( particle.weight );
     particles_.push_back(particle);
@@ -471,7 +472,7 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr,
   {
     p_weights[i] = exp(particles_[i].log_weight - max_log_prob);
     // p_weights[i] = particles_[i].weight;
-    totalWeightSum += particles_[i].weight;
+    totalWeightSum += p_weights[i];
   }
 
   Eigen::Vector2f next_robot_loc(0.0, 0.0);

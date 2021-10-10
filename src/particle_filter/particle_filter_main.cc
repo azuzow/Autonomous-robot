@@ -178,6 +178,7 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
       msg.angle_min,
       msg.angle_max);
   PublishVisualization();
+  
 }
 
 void OdometryCallback(const nav_msgs::Odometry& msg) {
