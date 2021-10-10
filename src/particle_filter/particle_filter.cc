@@ -342,6 +342,7 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
 {
   // A new laser scan observation is available (in the laser frame)
   // Call the Update and Resample steps as necessary.
+  unsigned long long int updateCount = 0;
 
   if(odom_initialized_ == false)
   {
@@ -362,10 +363,13 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     {
       Update( ranges, range_min, range_max, angle_min, angle_max, &particles_[i] );
     }
-
+    updateCount++;
 // std::cout << odom_initialized_ << " after update " << std::endl;
 
-    Resample();
+    //resample less often: control how many times resample is called based on number of updates ; default is 1 (resample all the time)
+    if(updateCount % modOperator == 0){
+      Resample();
+    }
     last_update = prev_odom_loc_;
     // std::cout << odom_initialized_ << " after Resample " << std::endl;
 
