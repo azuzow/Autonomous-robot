@@ -173,7 +173,7 @@ namespace particle_filter {
 
 
     Particle& particle = *p_ptr;
-    std::cout<<particle.loc.x()<<" "<< particle.loc.y()<<std::endl;
+    // std::cout<<particle.loc.x()<<" "<< particle.loc.y()<<std::endl;
     std::vector<Eigen::Vector2f> predicted_pointCloud;
     GetPredictedPointCloud(particle.loc,particle.angle,ranges.size(),range_min,range_max,angle_min,angle_max,&predicted_pointCloud);
 
@@ -242,17 +242,17 @@ void ParticleFilter::Resample()
       max_log_prob = std::max(max_log_prob, particles_[i].log_weight);
     }
 
-    std::cout << "after finding max_log_prob" << particles_.size() << std::endl;
+    // std::cout << "after finding max_log_prob" << particles_.size() << std::endl;
 
     for(unsigned int i=0; i<particles_.size(); i++)
     {
       particles_[i].log_weight -= max_log_prob;
       particles_[i].weight = exp(particles_[i].log_weight);
-      std::cout << i << " " << particles_[i].weight << std::endl;
+      // std::cout << i << " " << particles_[i].weight << std::endl;
       totalWeightSum += particles_[i].weight;
     }
 
-    std::cout << "after finding total prob" << particles_.size() << std::endl;
+    // std::cout << "after finding total prob" << particles_.size() << std::endl;
 
 
     // for(auto& particle: particles_)
@@ -271,7 +271,7 @@ void ParticleFilter::Resample()
         float start = weightSum / totalWeightSum;
         weightSum += particles_[i].weight;
         float end = weightSum / totalWeightSum;
-        std::cout << i << " " << particles_[i].weight << " " << start << " " << end << std::endl;
+        // std::cout << i << " " << particles_[i].weight << " " << start << " " << end << std::endl;
         Vector2f bin = Vector2f(start,end);
         binSet.push_back(bin);
     }
@@ -307,7 +307,7 @@ void ParticleFilter::Resample()
       {
         i = 0;
       }
-      std::cout << i << " " << j << " " << randNum << " " << binSet[i].x() << " " << binSet[i].y() << std::endl;
+      // std::cout << i << " " << j << " " << randNum << " " << binSet[i].x() << " " << binSet[i].y() << std::endl;
     }
 
 
@@ -348,7 +348,7 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     return;
   }
 
-  std::cout << odom_initialized_ << " In update " << std::endl;
+  // std::cout << odom_initialized_ << " In update " << std::endl;
 
   double distance_from_last_update = (prev_odom_loc_ - last_update).norm();
 
@@ -363,11 +363,11 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
       Update( ranges, range_min, range_max, angle_min, angle_max, &particles_[i] );
     }
 
-std::cout << odom_initialized_ << " after update " << std::endl;
+// std::cout << odom_initialized_ << " after update " << std::endl;
 
     Resample();
     last_update = prev_odom_loc_;
-    std::cout << odom_initialized_ << " after Resample " << std::endl;
+    // std::cout << odom_initialized_ << " after Resample " << std::endl;
 
   }
 
@@ -418,10 +418,10 @@ std::cout << odom_initialized_ << " after update " << std::endl;
      {
 
        float deltaTransformAngle = odom_angle - prev_odom_angle_;
-        Eigen::Rotation2Df rotation( deltaTransformAngle );
+        Eigen::Rotation2Df rotation( -prev_odom_angle_ );
         Eigen::Vector2f deltaTransformBaseLink=  rotation * (odom_loc-prev_odom_loc_) ;
 
-        TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.1, 0.1, 0.1, 0.1);
+        TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.4, 0.02, 0.2, 0.4);
       }
       prev_odom_loc_ = odom_loc;
       prev_odom_angle_ = odom_angle;
