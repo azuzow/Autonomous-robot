@@ -242,14 +242,17 @@ void ParticleFilter::Resample()
       max_log_prob = std::max(max_log_prob, particles_[i].log_weight);
     }
 
-    // std::cout << "after finding max_log_prob" << particles_.size() << std::endl;
+    std::cout << "after finding max_log_prob" << particles_.size() << std::endl;
 
     for(unsigned int i=0; i<particles_.size(); i++)
     {
       particles_[i].log_weight -= max_log_prob;
       particles_[i].weight = exp(particles_[i].log_weight);
+      std::cout << i << " " << particles_[i].weight << std::endl;
       totalWeightSum += particles_[i].weight;
     }
+
+    std::cout << "after finding total prob" << particles_.size() << std::endl;
 
 
     // for(auto& particle: particles_)
@@ -265,34 +268,48 @@ void ParticleFilter::Resample()
     std::vector<Vector2f> binSet;
     for(unsigned int i=0; i< total_particles; ++i)
     {
-        float start = weightSum;
+        float start = weightSum / totalWeightSum;
         weightSum += particles_[i].weight;
         float end = weightSum / totalWeightSum;
+        std::cout << i << " " << particles_[i].weight << " " << start << " " << end << std::endl;
         Vector2f bin = Vector2f(start,end);
         binSet.push_back(bin);
     }
 
-
     //new particle set
     vector<Particle> newParticles_;
-    unsigned int j =0;
+    unsigned int j =0, i=0;
+    double avg_bin_size = 1.0 / total_particles;
 
   //select a random value between 0 and 1 and  determine which bin it belongs to.
   //Corresponding particle at bin will be resampled in the new particle set
   // Run this step N (number of particles in set) times
-    while(j  < total_particles)
+
+    float randNum = rng_.UniformRandom(0, 1);
+    while( j < total_particles )
     {
-      //pick a random number between 0 and 1
-      float randNum = rng_.UniformRandom(0, 1);
-      for(unsigned int i = 0; i  < total_particles; i++)
+      while(binSet[i].x() < randNum && randNum <= binSet[i].y() )
       {
-        if(binSet[i].x() < randNum && randNum < binSet[i].y() )
+        newParticles_.push_back(particles_[i]);
+        randNum += avg_bin_size;
+        j++;
+        if( j == total_particles )
         {
-          newParticles_.push_back(particles_[i]);
+          break;
+        }
+        if (randNum > 1)
+        {
+          randNum -= 1;
         }
       }
-      j++;
+      i++;
+      if( i == total_particles )
+      {
+        i = 0;
+      }
+      std::cout << i << " " << j << " " << randNum << " " << binSet[i].x() << " " << binSet[i].y() << std::endl;
     }
+
 
    //   printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
     //   x);
@@ -330,8 +347,12 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
       Update( ranges, range_min, range_max, angle_min, angle_max, &particles_[i] );
     }
 
+std::cout << odom_initialized_ << " after update " << std::endl;
+
     Resample();
     last_update = prev_odom_loc_;
+    std::cout << odom_initialized_ << " after Resample " << std::endl;
+
   }
 
 
@@ -344,6 +365,8 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
   //k1 and k2 should be larger than k3 and k4 to create a oval that is longer along the x axis
 
   Particle& particle = *particle_pointer;
+
+  // std::cout << "Transform:" << transform << " rotation:" << rotation << std::endl;
 
     float magnitude_of_transform = sqrt((transform.x()*transform.x())+(transform.y()*transform.y()) );
     float magnitude_of_rotation = abs(rotation);
@@ -361,6 +384,8 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     particle.loc.y() += transform.y()+ epsilon_y;
     // not sure if this is correct either
     particle.angle+= rotation+epsilon_theta;
+
+    // std::cout << particle.loc.x() << " in TransformParticle " << particle.loc.y() << std::endl;
 
   }
 
@@ -387,7 +412,7 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     }
     else
     {
-      // odom_initialized_ = true;
+      odom_initialized_ = true;
       prev_odom_loc_ = odom_loc;
       prev_odom_angle_ = odom_angle;
     }
@@ -395,9 +420,8 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
   // You will need to use the Gaussian random number generator provided. For
   // example, to generate a random number from a Gaussian with mean 0, and
   // standard deviation 2:
-  float x = rng_.Gaussian(0.0, 2.0);
-  printf("Random number drawn from Gaussian distribution with 0 mean and "
-   "standard deviation of 2 : %f\n", x);
+  // float x = rng_.Gaussian(0.0, 2.0);
+  // printf("Random number drawn from Gaussian distribution with 0 mean and " "standard deviation of 2 : %f\n", x);
 }
 
 void ParticleFilter::Initialize(const string& map_file,

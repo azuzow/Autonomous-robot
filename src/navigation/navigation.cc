@@ -328,7 +328,7 @@ float Navigation::findNearestPoint(float curvature, float angle)
   if (distance< minimumDistance){
     minimumDistance=distance;
   }
-  
+
 }
 return minimumDistance;
 }
@@ -522,7 +522,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
       //current_free_path_length_score=-100000000;
       current_free_path_length=-10;
     }
-    
+
     // if(current_free_path_length < 0.3)
     // {
     //   continue;
@@ -549,7 +549,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     current_score = 5 * current_free_path_length + 4 * curvature_score + 3 * current_clearance;
 
-	   std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length << " current_clearance: " << 3*current_clearance << " Curvature score: " << 4*curvature_score << std::endl;
+	   // std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length << " current_clearance: " << 3*current_clearance << " Curvature score: " << 4*curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
    if ( max_score < current_score )
     {
