@@ -107,6 +107,9 @@ class ParticleFilter {
   // Random number generator.
   util_random::Random rng_;
 
+  // modulo operator to control how often resample is called
+  unsigned int modOperator = 1;
+  
   // Previous odometry-reported locations.
   Eigen::Vector2f prev_odom_loc_;
   float prev_odom_angle_;
