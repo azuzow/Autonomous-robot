@@ -47,7 +47,7 @@ using Eigen::Vector2f;
 using Eigen::Vector2i;
 using vector_map::VectorMap;
 
-DEFINE_double(num_particles, 30, "Number of particles");
+DEFINE_double(num_particles, 100, "Number of particles");
 
 namespace particle_filter {
 
@@ -82,7 +82,7 @@ namespace particle_filter {
   // expected observations, to be used for the update step.
 
   // Note: The returned values must be set using the `scan` variable:
-    scan.resize(num_ranges);
+    scan.resize( int(num_ranges / ratio) );
   // Fill in the entries of scan using array writes, e.g. scan[i] = ...
 
   // .norm() of vector is magnitude
@@ -121,22 +121,20 @@ namespace particle_filter {
         {
           // printf("Intersection\n" );
           //TODO: Shouldn't we need to find distance with location and not lazer location.
-          float distance = sqrt(pow(intersection_point.x()-lazer_loc.x(),2)+pow(intersection_point.y()-lazer_loc.y(),2));
-          float closest_point_distance = sqrt(pow(intersection_point.x()-closest_point.x(),2)+pow(intersection_point.y()-closest_point.y(),2));
+          float distance = (intersection_point - lazer_loc).norm();
+          // float distance = sqrt(pow(intersection_point.x()-lazer_loc.x(),2)+pow(intersection_point.y()-lazer_loc.y(),2));
+          // float closest_point_distance = sqrt(pow(intersection_point.x()-closest_point.x(),2)+pow(intersection_point.y()-closest_point.y(),2));
+          float closest_point = (intersection_point - closest_point).norm();
           if(distance<closest_point_distance)
           {
             closest_point=intersection_point;
           }
         }
-        else
-        {
-          // printf("No intersection\n");
-        }
 
       }
       scan[i]=closest_point;
    // scan[i] = Vector2f(0, 0);
-      current_ray_angle+=angle_increment;
+      current_ray_angle+=angle_increment*ratio;
     }
   }
 
@@ -177,7 +175,7 @@ namespace particle_filter {
     Particle& particle = *p_ptr;
     // std::cout<<particle.loc.x()<<" "<< particle.loc.y()<<std::endl;
     std::vector<Eigen::Vector2f> predicted_pointCloud;
-    GetPredictedPointCloud(particle.loc,particle.angle,ranges.size(),range_min,range_max,angle_min,angle_max,&predicted_pointCloud);
+    GetPredictedPointCloud(particle.loc,particle.angle,ranges.size(),range_min,range_max,angle_min,angle_max, &predicted_pointCloud);
 
     unsigned int i = 0;
     double distance = 0;
@@ -192,30 +190,30 @@ namespace particle_filter {
     for (i=0; i < predicted_pointCloud.size(); i++)
     {
       distance = sqrt( pow(predicted_pointCloud[i].x()-lazer_loc.x(),2) + pow(predicted_pointCloud[i].y()-lazer_loc.y(),2) );
-      if(ranges[i] < range_min)
+      if(ranges[ ratio * i] < range_min)
       {
         continue;
       }
-      else if(ranges[i] > range_max)
+      else if(ranges[ ratio * i] > range_max)
       {
         continue;
       }
-      else if(ranges[i] < distance - short_distance )
+      else if(ranges[ ratio * i] < distance - short_distance )
       {
         prob = exp( - ( short_distance*short_distance ) / ( std_update_weight * std_update_weight ) );
       }
-      else if( ranges[i] > distance + long_distance )
+      else if( ranges[  ratio * i ] > distance + long_distance )
       {
         prob = exp( - ( long_distance*long_distance ) / ( std_update_weight * std_update_weight ) );
       }
       else
       {
-        prob = exp( - ( pow( distance - ranges[i] , 2) ) / (std_update_weight * std_update_weight) );
+        prob = exp( - ( pow( distance - ranges[ ratio * i ] , 2) ) / (std_update_weight * std_update_weight) );
       }
       log_prob += log(prob);
     }
 
-    particle.log_weight += log_prob;
+    particle.log_weight += gamma * log_prob;
     // particle.weight += exp(log_prob);
   }
 
@@ -236,6 +234,9 @@ void ParticleFilter::Resample()
     // example, to generate a random number between 0 and 1:
 
     //compute sum of all particle weights
+
+    std::cout << particles_.size() << "Particles size" << std::endl;
+
     float totalWeightSum = 0;
     double max_log_prob = -10000000.0;
 
@@ -434,10 +435,10 @@ std::cout << odom_initialized_ << " after update " << updateCount << std::endl;
          for(auto& particle: particles_)
          {
 
-            Eigen::Rotation2Df rotation( particle.angle -prev_odom_angle_ );
+            Eigen::Rotation2Df rotation( particle.angle-prev_odom_angle_ );
             Eigen::Vector2f deltaTransformBaseLink =  rotation * (odom_loc-prev_odom_loc_) ;
 
-            TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.4, 0.02, 0.2, 0.4 );
+            TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.15, 0.15, 0.1, 0.1 );
           }
           prev_odom_loc_ = odom_loc;
           prev_odom_angle_ = odom_angle;
@@ -475,10 +476,10 @@ void ParticleFilter::Initialize(const string& map_file,
 
     Particle particle;
 
-    particle.loc.x() = loc.x()+ rng_.Gaussian(0.0, 0.05);
-    particle.loc.y() = loc.y()+ rng_.Gaussian(0.0, 0.05);
+    particle.loc.x() = loc.x()+ rng_.Gaussian(0.0, 1.0);
+    particle.loc.y() = loc.y()+ rng_.Gaussian(0.0, 1.0);
       //angle within theta of 30
-    particle.angle = angle+rng_.Gaussian(0.0, M_PI/32);
+    particle.angle = angle+rng_.Gaussian(0.0, M_PI/6);
     particle.weight = (1.0)/FLAGS_num_particles;
     particle.log_weight = log( particle.weight );
     particles_.push_back(particle);

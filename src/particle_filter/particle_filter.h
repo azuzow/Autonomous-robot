@@ -120,6 +120,8 @@ class ParticleFilter {
   float std_update_weight = 1.0;
   float short_distance = 0.5;
   float long_distance = 0.5;
+  float gamma = 0.1;
+  int ratio = 10;
   Eigen::Vector2f last_update;
 };
 }  // namespace slam
