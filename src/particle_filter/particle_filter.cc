@@ -62,6 +62,7 @@ namespace particle_filter {
     *particles = particles_;
   }
 
+
   void ParticleFilter::GetPredictedPointCloud(const Vector2f& loc,
     const float angle,
     int num_ranges,
@@ -132,8 +133,8 @@ namespace particle_filter {
           // printf("No intersection\n");
         }
 
-        scan[i]=closest_point;
       }
+      scan[i]=closest_point;
    // scan[i] = Vector2f(0, 0);
       current_ray_angle+=angle_increment;
     }
@@ -417,19 +418,27 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
   // Implement the motion model predict step here, to propagate the particles
   // forward based on odometry.
 
-  if(odom_initialized_)
-  {
-    float deltaTransformAngle = AngleDiff(odom_angle, prev_odom_angle_);
-     for(auto& particle: particles_)
-     {
-
-        Eigen::Rotation2Df rotation( AngleDiff(particle.angle, prev_odom_angle_) );
-        Eigen::Vector2f deltaTransformBaseLink =  rotation * (odom_loc-prev_odom_loc_) ;
-
-        TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.01, 0.01, 0.01, 0.01);
+    if(odom_initialized_)
+    {
+      if( (odom_loc-prev_odom_loc_).norm() > 1.0 )
+      {
+        prev_odom_loc_ = odom_loc;
+        prev_odom_angle_ = odom_angle;
       }
-      prev_odom_loc_ = odom_loc;
-      prev_odom_angle_ = odom_angle;
+      else
+      {
+        float deltaTransformAngle = AngleDiff(odom_angle, prev_odom_angle_);
+         for(auto& particle: particles_)
+         {
+
+            Eigen::Rotation2Df rotation( particle.angle -prev_odom_angle_ );
+            Eigen::Vector2f deltaTransformBaseLink =  rotation * (odom_loc-prev_odom_loc_) ;
+
+            TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.4, 0.02, 0.2, 0.4 );
+          }
+          prev_odom_loc_ = odom_loc;
+          prev_odom_angle_ = odom_angle;
+      }
     }
     else
     {
@@ -502,12 +511,11 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr,
   {
     next_robot_loc += ( p_weights[i] / totalWeightSum )*particles_[i].loc;
     next_robot_angle += ( p_weights[i] / totalWeightSum )*particles_[i].angle;
-    std::cout << i << " " << particles_[i].loc << " location and angle in get location " << particles_[i].angle << endl;
   }
   loc = next_robot_loc;
   angle = next_robot_angle;
 
-  std::cout << loc << " location and angle in get location " << angle << " " << particles_.size() << std::endl;
+  // std::cout << loc << " location and angle in get location " << angle << " " << particles_.size() << std::endl;
 
 }
 

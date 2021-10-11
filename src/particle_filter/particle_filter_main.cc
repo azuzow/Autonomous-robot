@@ -108,7 +108,7 @@ void PublishParticles() {
 }
 
 void PublishPredictedScan() {
-  const uint32_t kColor = 0xd67d00;
+  const uint32_t kColor = 0x06990d;
   Vector2f robot_loc(0, 0);
   float robot_angle(0);
   particle_filter_.GetLocation(&robot_loc, &robot_angle);
@@ -178,7 +178,7 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
       msg.angle_min,
       msg.angle_max);
   PublishVisualization();
-  
+
 }
 
 void OdometryCallback(const nav_msgs::Odometry& msg) {
@@ -249,6 +249,7 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "particle_filter", ros::init_options::NoSigintHandler);
   ros::NodeHandle n;
   InitializeMsgs();
+
 
   visualization_publisher_ =
       n.advertise<VisualizationMsg>("visualization", 1);
