@@ -110,6 +110,8 @@ class ParticleFilter {
   // modulo operator to control how often resample is called
   unsigned int modOperator = 5;
 
+  unsigned long long int updateCount;
+
   // Previous odometry-reported locations.
   Eigen::Vector2f prev_odom_loc_;
   float prev_odom_angle_;

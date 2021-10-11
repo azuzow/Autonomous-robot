@@ -47,7 +47,7 @@ using Eigen::Vector2f;
 using Eigen::Vector2i;
 using vector_map::VectorMap;
 
-DEFINE_double(num_particles, 20, "Number of particles");
+DEFINE_double(num_particles, 30, "Number of particles");
 
 namespace particle_filter {
 
@@ -288,11 +288,14 @@ void ParticleFilter::Resample()
   // Run this step N (number of particles in set) times
 
     float randNum = rng_.UniformRandom(0, 1);
+    std::cout << particles_.size() << std::endl;
+
     while( j < total_particles )
     {
       while(binSet[i].x() < randNum && randNum <= binSet[i].y() )
       {
         newParticles_.push_back(particles_[i]);
+        // std::cout << i << " " << particles_[i].loc << " " << particles_[i].weight << " " << particles_[i].log_weight << std::endl;
         randNum += avg_bin_size;
         j++;
         if( j == total_particles )
@@ -316,7 +319,6 @@ void ParticleFilter::Resample()
    /* float r = rng_.UniformRandom(0, 1/total_particles);
     double c = particles_[0];
     x = 1;
-
     for(unsigned int m = 0; m < total_particles ; m++){
         double U = r + (m -1) * (1/total_particles);
         while( U > c)
@@ -344,7 +346,6 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
 {
   // A new laser scan observation is available (in the laser frame)
   // Call the Update and Resample steps as necessary.
-  unsigned long long int updateCount = 0;
 
   if(odom_initialized_ == false)
   {
@@ -361,19 +362,21 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
   }
 
     unsigned int i = 0;
+    std::cout << odom_initialized_ << " before update " << std::endl;
     for(i=0; i < particles_.size(); i++)
     {
       Update( ranges, range_min, range_max, angle_min, angle_max, &particles_[i] );
     }
     updateCount++;
-// std::cout << odom_initialized_ << " after update " << std::endl;
+std::cout << odom_initialized_ << " after update " << updateCount << std::endl;
 
     //resample less often: control how many times resample is called based on number of updates ; default is 1 (resample all the time)
     if(updateCount % modOperator == 0){
+      std::cout << odom_initialized_ << " Going in Resample " << std::endl;
       Resample();
     }
     last_update = prev_odom_loc_;
-    // std::cout << odom_initialized_ << " after Resample " << std::endl;
+    std::cout << odom_initialized_ << " after Resample " << std::endl;
 
   }
 
@@ -445,6 +448,7 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
       odom_initialized_ = true;
       prev_odom_loc_ = odom_loc;
       prev_odom_angle_ = odom_angle;
+      updateCount = 0;
     }
 
   // You will need to use the Gaussian random number generator provided. For
