@@ -91,7 +91,7 @@ namespace particle_filter {
     Eigen::Vector2f lazer_loc = loc+lazer_offset;
     float angle_range = angle_max-angle_min;
     float angle_increment= angle_range/float(num_ranges);
-    float current_ray_angle = angle - angle_range;
+    float current_ray_angle = angle + angle_min;
 
     // TODO: Global frame vs Local frame
 
@@ -103,14 +103,13 @@ namespace particle_filter {
 
       //TODO: We need to add lidar location here
       ray_start= ray_start*range_min + lazer_loc;
-      ray_end= ray_start*range_max + lazer_loc;
+      ray_end= ray_end*range_max + lazer_loc;
       line2f current_ray(ray_start.x(), ray_start.y(), ray_end.x(), ray_end.y());
-      current_ray_angle+=angle_increment;
 
       // The line segments in the map are stored in the `map_.lines` variable. You
       // can iterate through them as:
 
-      Eigen::Vector2f closest_point(0,0);
+      Eigen::Vector2f closest_point = ray_end;
       Eigen::Vector2f intersection_point(0,0);
 
       for (size_t j = 0; j < map_.lines.size(); ++j)
@@ -136,6 +135,7 @@ namespace particle_filter {
         scan[i]=closest_point;
       }
    // scan[i] = Vector2f(0, 0);
+      current_ray_angle+=angle_increment;
     }
   }
 
@@ -325,7 +325,7 @@ void ParticleFilter::Resample()
         }
         newParticles_.push_back(particles_[x]);
     } */
-    
+
 
 
    //   printf("Random number drawn from uniform distribution between 0 and 1: %f\n",
@@ -502,11 +502,12 @@ void ParticleFilter::GetLocation(Eigen::Vector2f* loc_ptr,
   {
     next_robot_loc += ( p_weights[i] / totalWeightSum )*particles_[i].loc;
     next_robot_angle += ( p_weights[i] / totalWeightSum )*particles_[i].angle;
+    std::cout << i << " " << particles_[i].loc << " location and angle in get location " << particles_[i].angle << endl;
   }
   loc = next_robot_loc;
   angle = next_robot_angle;
 
-  std::cout << loc << " location and angle in get location " << angle << endl;
+  std::cout << loc << " location and angle in get location " << angle << " " << particles_.size() << std::endl;
 
 }
 
