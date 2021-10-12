@@ -149,7 +149,7 @@ namespace particle_filter {
           float distance = (intersection_point - lazer_loc).norm();
           // float distance = sqrt(pow(intersection_point.x()-lazer_loc.x(),2)+pow(intersection_point.y()-lazer_loc.y(),2));
           // float closest_point_distance = sqrt(pow(intersection_point.x()-closest_point.x(),2)+pow(intersection_point.y()-closest_point.y(),2));
-          float closest_point_distance = (intersection_point - closest_point).norm();
+          float closest_point_distance = (closest_point - lazer_loc).norm();
           if(distance<closest_point_distance)
           {
             closest_point=intersection_point;
@@ -463,7 +463,7 @@ std::cout << odom_initialized_ << " after update " << updateCount << std::endl;
             Eigen::Rotation2Df rotation( particle.angle-prev_odom_angle_ );
             Eigen::Vector2f deltaTransformBaseLink =  rotation * (odom_loc-prev_odom_loc_) ;
 
-            TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.02, 0.02, 0.02, 0.02 );
+            TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.1, 0.1, 0.1, 0.1 );
           }
           prev_odom_loc_ = odom_loc;
           prev_odom_angle_ = odom_angle;
@@ -501,8 +501,8 @@ void ParticleFilter::Initialize(const string& map_file,
 
     Particle particle;
 
-    particle.loc.x() = loc.x()+ rng_.Gaussian(0.0, 0.2);
-    particle.loc.y() = loc.y()+ rng_.Gaussian(0.0, 0.2);
+    particle.loc.x() = loc.x()+ rng_.Gaussian(0.0, 0.1);
+    particle.loc.y() = loc.y()+ rng_.Gaussian(0.0, 0.1);
       //angle within theta of 30
     particle.angle = angle+rng_.Gaussian(0.0, M_PI/6);
     particle.weight = (1.0)/FLAGS_num_particles;
