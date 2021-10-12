@@ -460,9 +460,10 @@ std::cout << odom_initialized_ << " after update " << updateCount << std::endl;
          for(auto& particle: particles_)
          {
 
-            Eigen::Rotation2Df rotation( particle.angle-prev_odom_angle_ );
+            Eigen::Rotation2Df rotation( -prev_odom_angle_ );
             Eigen::Vector2f deltaTransformBaseLink =  rotation * (odom_loc-prev_odom_loc_) ;
-
+	    particle.loc= particle.loc +Eigen::rotation2Df(particle.angle)*deltaTransformBaseLink;
+	    particle.angle= particle.angle+ deltaTransformAngle;
             TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.1, 0.1, 0.1, 0.1 );
           }
           prev_odom_loc_ = odom_loc;
