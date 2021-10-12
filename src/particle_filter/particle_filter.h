@@ -108,7 +108,7 @@ class ParticleFilter {
   util_random::Random rng_;
 
   // modulo operator to control how often resample is called
-  unsigned int modOperator = 5;
+  unsigned int modOperator = 2;
 
   unsigned long long int updateCount;
 
@@ -117,10 +117,10 @@ class ParticleFilter {
   float prev_odom_angle_;
   bool odom_initialized_;
 
-  float std_update_weight = 1.0;
+  float var_obs_ = 0.1;
   float short_distance = 0.5;
   float long_distance = 0.5;
-  float gamma = 0.1;
+  float gamma = 0.01;
   int ratio = 10;
   Eigen::Vector2f last_update;
 };

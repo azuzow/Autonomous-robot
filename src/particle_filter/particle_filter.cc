@@ -30,11 +30,23 @@
 #include "shared/math/line2d.h"
 #include "shared/math/math_util.h"
 #include "shared/util/timer.h"
+#include "ros/ros.h"
+#include "rosbag/bag.h"
+#include "rosbag/view.h"
+#include "ros/package.h"
+
 
 #include "config_reader/config_reader.h"
 #include "particle_filter.h"
+#include "amrl_msgs/VisualizationMsg.h"
+#include "amrl_msgs/Localization2DMsg.h"
+
+
 
 #include "vector_map/vector_map.h"
+
+#include "visualization/visualization.h"
+
 
 using geometry::line2f;
 using std::cout;
@@ -46,6 +58,15 @@ using math_util::AngleDiff;
 using Eigen::Vector2f;
 using Eigen::Vector2i;
 using vector_map::VectorMap;
+using visualization::DrawLine;
+
+
+
+// ros::Publisher visualization_publisher_;
+// ros::Publisher localization_publisher_;
+// ros::Publisher laser_publisher_;
+// VisualizationMsg vis_msg_;
+
 
 DEFINE_double(num_particles, 100, "Number of particles");
 
@@ -61,6 +82,7 @@ namespace particle_filter {
   void ParticleFilter::GetParticles(vector<Particle>* particles) const {
     *particles = particles_;
   }
+
 
 
   void ParticleFilter::GetPredictedPointCloud(const Vector2f& loc,
@@ -107,6 +129,9 @@ namespace particle_filter {
       ray_end= ray_end*range_max + lazer_loc;
       line2f current_ray(ray_start.x(), ray_start.y(), ray_end.x(), ray_end.y());
 
+      // visualization::DrawLine( ray_start, ray_end, 0xff0000, vis_msg_ );
+
+
       // The line segments in the map are stored in the `map_.lines` variable. You
       // can iterate through them as:
 
@@ -124,7 +149,7 @@ namespace particle_filter {
           float distance = (intersection_point - lazer_loc).norm();
           // float distance = sqrt(pow(intersection_point.x()-lazer_loc.x(),2)+pow(intersection_point.y()-lazer_loc.y(),2));
           // float closest_point_distance = sqrt(pow(intersection_point.x()-closest_point.x(),2)+pow(intersection_point.y()-closest_point.y(),2));
-          float closest_point = (intersection_point - closest_point).norm();
+          float closest_point_distance = (intersection_point - closest_point).norm();
           if(distance<closest_point_distance)
           {
             closest_point=intersection_point;
@@ -200,15 +225,15 @@ namespace particle_filter {
       }
       else if(ranges[ ratio * i] < distance - short_distance )
       {
-        prob = exp( - ( short_distance*short_distance ) / ( std_update_weight * std_update_weight ) );
+        prob = exp( - ( short_distance*short_distance ) / ( var_obs_ * var_obs_ ) );
       }
       else if( ranges[  ratio * i ] > distance + long_distance )
       {
-        prob = exp( - ( long_distance*long_distance ) / ( std_update_weight * std_update_weight ) );
+        prob = exp( - ( long_distance*long_distance ) / ( var_obs_ * var_obs_ ) );
       }
       else
       {
-        prob = exp( - ( pow( distance - ranges[ ratio * i ] , 2) ) / (std_update_weight * std_update_weight) );
+        prob = exp( - ( pow( distance - ranges[ ratio * i ] , 2) ) / (var_obs_ * var_obs_) );
       }
       log_prob += log(prob);
     }
@@ -438,7 +463,7 @@ std::cout << odom_initialized_ << " after update " << updateCount << std::endl;
             Eigen::Rotation2Df rotation( particle.angle-prev_odom_angle_ );
             Eigen::Vector2f deltaTransformBaseLink =  rotation * (odom_loc-prev_odom_loc_) ;
 
-            TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.15, 0.15, 0.1, 0.1 );
+            TransformParticle(&particle, deltaTransformBaseLink, deltaTransformAngle, 0.02, 0.02, 0.02, 0.02 );
           }
           prev_odom_loc_ = odom_loc;
           prev_odom_angle_ = odom_angle;
@@ -476,8 +501,8 @@ void ParticleFilter::Initialize(const string& map_file,
 
     Particle particle;
 
-    particle.loc.x() = loc.x()+ rng_.Gaussian(0.0, 1.0);
-    particle.loc.y() = loc.y()+ rng_.Gaussian(0.0, 1.0);
+    particle.loc.x() = loc.x()+ rng_.Gaussian(0.0, 0.2);
+    particle.loc.y() = loc.y()+ rng_.Gaussian(0.0, 0.2);
       //angle within theta of 30
     particle.angle = angle+rng_.Gaussian(0.0, M_PI/6);
     particle.weight = (1.0)/FLAGS_num_particles;

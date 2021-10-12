@@ -122,10 +122,13 @@ void PublishPredictedScan() {
       last_laser_msg_.angle_min,
       last_laser_msg_.angle_max,
       &predicted_scan);
-  
+
   for (const Vector2f& p : predicted_scan) {
     DrawPoint(p, kColor, vis_msg_);
   }
+  // for (size_t i = 0; i < predicted_scan.size(); i++) {
+  //   DrawLine(predicted_scan[i], robot_loc, 0xff0000, vis_msg_ );
+  // }
 }
 
 void PublishTrajectory() {
