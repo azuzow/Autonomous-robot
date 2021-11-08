@@ -28,7 +28,16 @@
 #ifndef SRC_SLAM_H_
 #define SRC_SLAM_H_
 
+using namespace std;
+
 namespace slam {
+
+struct Pose {
+  Eigen::Vector2f loc;
+  float angle;
+  float log_likelihood = 0.0;
+};
+
 
 class SLAM {
  public:
@@ -51,6 +60,9 @@ class SLAM {
 
   // Get latest robot pose.
   void GetPose(Eigen::Vector2f* loc, float* angle) const;
+  Pose CorrelativeScanMatching(const vector<float>& ranges, float angle_min, float angle_max);
+  void add_new_points_in_map(Pose current_best_pose, const vector<float>& ranges, float angle_min, float angle_max);
+  Eigen::Vector2f rotation( Eigen::Vector2f local_frame_loc, float local_frame_angle, Eigen::Vector2f point_in_local_frame );
 
  private:
 
@@ -58,6 +70,10 @@ class SLAM {
   Eigen::Vector2f prev_odom_loc_;
   float prev_odom_angle_;
   bool odom_initialized_;
+  bool odom_observed;
+  int num_points_in_final_plot = 1000;
+
+  vector<Eigen::Vector2f> constructed_map;
 };
 }  // namespace slam
 

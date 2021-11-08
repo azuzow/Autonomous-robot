@@ -60,32 +60,91 @@ void SLAM::GetPose(Eigen::Vector2f* loc, float* angle) const {
   *angle = 0;
 }
 
+
+Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min, float angle_max)
+{
+  Pose new_pose;
+  return new_pose;
+}
+
+
 void SLAM::ObserveLaser(const vector<float>& ranges,
                         float range_min,
                         float range_max,
                         float angle_min,
-                        float angle_max) {
+                        float angle_max)
+{
   // A new laser scan has been observed. Decide whether to add it as a pose
   // for SLAM. If decided to add, align it to the scan from the last saved pose,
   // and save both the scan and the optimized pose.
+
+  if( !odom_observed ) return;
+
+  Pose current_best_pose = CorrelativeScanMatching( ranges, angle_min, angle_max );
+
+  // Change point cloud according to current_best_pose
+  add_new_points_in_map(current_best_pose, ranges, angle_min, angle_max );
+
+  // makeProbTable();
 }
 
-void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
-  if (!odom_initialized_) {
+
+Vector2f SLAM::rotation( Eigen::Vector2f local_frame_loc, float local_frame_angle, Eigen::Vector2f point_in_local_frame )
+{
+  Eigen::Vector2f new_location(0.0, 0.0);
+
+  new_location.x() = local_frame_loc.x() + point_in_local_frame.x()*cos(local_frame_angle) + point_in_local_frame.y() * sin( -local_frame_angle ) ;
+  new_location.y() = local_frame_loc.y() + point_in_local_frame.x()*sin(local_frame_angle) + point_in_local_frame.y() * cos( local_frame_angle ) ;
+
+  return new_location;
+}
+
+void SLAM::add_new_points_in_map(Pose current_best_pose, const vector<float>& ranges, float angle_min, float angle_max)
+{
+  float angle_diff = (angle_max - angle_min) / ranges.size();
+  float current_angle = angle_min + current_best_pose.angle;
+  int i=0;
+  while( angle_max > current_angle )
+  {
+    Eigen::Vector2f range_point(ranges[i], 0.0);
+    Eigen::Vector2f new_point = rotation( current_best_pose.loc, current_angle, range_point );
+    constructed_map.push_back(new_point);
+    current_angle += angle_diff;
+    i++;
+  }
+  return;
+}
+
+vector<Vector2f> SLAM::GetMap()
+{
+  vector<Vector2f> plotting_map;
+  // Reconstruct the map as a single aligned point cloud from all saved poses
+  // and their respective scans.
+  for(int i=0; i<num_points_in_final_plot; i++)
+  {
+      plotting_map.push_back( constructed_map[ int( (i * (constructed_map.size() - 1) ) / (num_points_in_final_plot - 1) ) ] );
+  }
+  return plotting_map;
+}
+
+
+void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle)
+{
+  odom_observed = true;
+  if (!odom_initialized_)
+  {
     prev_odom_angle_ = odom_angle;
     prev_odom_loc_ = odom_loc;
     odom_initialized_ = true;
     return;
   }
-  // Keep track of odometry to estimate how far the robot has moved between 
+  // Keep track of odometry to estimate how far the robot has moved between
   // poses.
+
+
+
+  // Set odom_observed true when we call motion model here
 }
 
-vector<Vector2f> SLAM::GetMap() {
-  vector<Vector2f> map;
-  // Reconstruct the map as a single aligned point cloud from all saved poses
-  // and their respective scans.
-  return map;
-}
 
 }  // namespace slam
