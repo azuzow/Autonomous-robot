@@ -52,7 +52,10 @@ namespace slam {
 SLAM::SLAM() :
     prev_odom_loc_(0, 0),
     prev_odom_angle_(0),
-    odom_initialized_(false) {}
+    odom_initialized_(false),
+    x_resolution(5),
+    y_resolution(5),
+    theta_resolution(30) {}
 
 void SLAM::GetPose(Eigen::Vector2f* loc, float* angle) const {
   // Return the latest pose estimate of the robot.
@@ -142,7 +145,7 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
   // and save both the scan and the optimized pose.
 
   if( !odom_observed ) return;
-
+  if(calculate_likelihoods){
 
   current_best_pose = CorrelativeScanMatching( ranges, angle_min, angle_max );
 
@@ -162,7 +165,7 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
     makeProbTable(current_point);
     current_angle += angle_diff;
   }
-
+  }
   obs_prob_table_init = true;
   // std::cout << "end of ObserveLaser" << std::endl;
 }
@@ -320,6 +323,11 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
 
     if(((last_likelihood_scan_loc-current_loc).norm()>=distance_to_compute_scan) || (abs(AngleDiff(last_likelihood_scan_angle, current_angle))>angle_to_compute_scan)){
       calculate_likelihoods=true;
+      last_likelihood_scan_loc=current_loc;
+      last_likelihood_scan_angle=current_angle;
+      }
+    else{
+        calculate_likelihoods=false;
       }
     if(calculate_likelihoods){
 
