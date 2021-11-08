@@ -68,6 +68,20 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
 }
 
 
+void SLAM::construct_obs_prob_table()
+{
+  obs_prob_table_width = (max_x_val - min_x_val) / delta_distance;
+  obs_prob_table_height = (max_y_val - min_y_val) / delta_distance;
+
+  obs_prob_table.resize(obs_prob_table_width);
+  for(int i=0; i<obs_prob_table_width; i++)
+  {
+    obs_prob_table[i].resize( obs_prob_table_height );
+    for(int j=0; j<obs_prob_table_height; j++) obs_prob_table[i][j] = -100000;
+  }
+}
+
+
 void SLAM::ObserveLaser(const vector<float>& ranges,
                         float range_min,
                         float range_max,
@@ -85,7 +99,40 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
   // Change point cloud according to current_best_pose
   add_new_points_in_map(current_best_pose, ranges, angle_min, angle_max );
 
-  // makeProbTable();
+  construct_obs_prob_table();
+
+  float angle_diff = (angle_max - angle_min) / ranges.size();
+  float current_angle = angle_min;
+
+  for(unsigned int i=0; i<ranges.size(); i++)
+  {
+    Eigen::Vector2f current_point;
+    current_point.x() = ranges[i] * cos(current_angle) + 0.2;
+    current_point.y() = ranges[i] * sin(current_angle);
+    makeProbTable(current_point);
+    current_angle += angle_diff;
+  }
+}
+
+
+void SLAM::makeProbTable(Eigen::Vector2f point)
+{
+  int ind_x = (point.x() - min_x_val) / delta_distance;
+  int ind_y = (point.y() - min_y_val) / delta_distance;
+
+  int iter_x_min = min(ind_x - 20, 0);
+  int iter_y_min = min(ind_y - 20, 0);
+  int iter_x_max = max(ind_x + 20, obs_prob_table_width - 1);
+  int iter_y_max = max(ind_y + 20, obs_prob_table_height - 1);
+
+  for(int x_iter = iter_x_min; x_iter <= iter_x_max; x_iter++)
+  {
+    for(int y_iter = iter_y_min; y_iter <= iter_y_max; y_iter++)
+    {
+      float cur_ll = - ( pow( (ind_x - x_iter)*delta_distance , 2) + pow(  (ind_y - y_iter)*delta_distance , 2 ) );
+      obs_prob_table[ x_iter][ y_iter ] = max(obs_prob_table[ x_iter][ y_iter ], cur_ll);
+    }
+  }
 }
 
 

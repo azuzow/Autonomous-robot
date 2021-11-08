@@ -60,6 +60,8 @@ class SLAM {
 
   // Get latest robot pose.
   void GetPose(Eigen::Vector2f* loc, float* angle) const;
+  void makeProbTable(Eigen::Vector2f point);
+  void construct_obs_prob_table();
   Pose CorrelativeScanMatching(const vector<float>& ranges, float angle_min, float angle_max);
   void add_new_points_in_map(Pose current_best_pose, const vector<float>& ranges, float angle_min, float angle_max);
   Eigen::Vector2f rotation( Eigen::Vector2f local_frame_loc, float local_frame_angle, Eigen::Vector2f point_in_local_frame );
@@ -73,6 +75,20 @@ class SLAM {
   bool odom_observed;
   int num_points_in_final_plot = 1000;
 
+  // Keep symetric in x and y direction
+  int min_x_val = -10;
+  int max_x_val = 10;
+  int min_y_val = -10;
+  int max_y_val = 10;
+
+  // Observation likelihood table
+  int obs_prob_table_width;
+  int obs_prob_table_height;
+  float delta_distance = 0.05;
+  vector< vector<float> > obs_prob_table;
+  float std_obs_likelihood = 0.01;
+
+  // Constructed map to plot
   vector<Eigen::Vector2f> constructed_map;
 };
 }  // namespace slam
