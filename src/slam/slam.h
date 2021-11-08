@@ -105,6 +105,7 @@ class SLAM {
   float last_likelihood_scan_angle;
   bool calculate_likelihoods;
   bool obs_prob_table_init = false;
+  bool use_laser = false;
   std::vector<Pose> poses;
   int x_resolution;
   int y_resolution;

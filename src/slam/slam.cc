@@ -152,7 +152,8 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
   // and save both the scan and the optimized pose.
 
   if( !odom_observed ) return;
-  if(calculate_likelihoods){
+  if(calculate_likelihoods && use_laser)
+  {
 
   current_best_pose = CorrelativeScanMatching( ranges, angle_min, angle_max );
 
@@ -173,6 +174,7 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
     current_angle += angle_diff;
   }
   obs_prob_table_init = true;
+  use_laser = false;
   }
   // std::cout << "end of ObserveLaser" << std::endl;
 }
@@ -317,6 +319,7 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
     last_likelihood_scan_angle=odom_angle;
     prev_odom_angle_ = current_angle;
     prev_odom_loc_ = current_loc;
+    use_laser = true;
     return;
   }
   // Keep track of odometry to estimate how far the robot has moved between
@@ -326,10 +329,13 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
     current_angle=odom_angle;
     current_loc= odom_loc;
 
+    // Not sure about this two lines
+    current_best_pose.loc = current_best_pose.loc + Eigen::Rotation2Df( odom_angle - prev_odom_angle_ ) * (odom_loc - prev_odom_loc_ );
+    current_best_pose.angle = AngleDiff(current_best_pose.angle, AngleDiff(odom_angle, prev_odom_angle_));
 
 
     float distance_to_compute_scan=0.1;
-    float angle_to_compute_scan=M_PI/20;
+    float angle_to_compute_scan=M_PI/24;
 
     if(((last_likelihood_scan_loc-current_loc).norm()>=distance_to_compute_scan) || (abs(AngleDiff(last_likelihood_scan_angle, current_angle))>angle_to_compute_scan)){
       calculate_likelihoods=true;
@@ -339,21 +345,26 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
     else{
         calculate_likelihoods=false;
       }
-    if(calculate_likelihoods){
+
+
+    if(calculate_likelihoods)
+    {
 
 
     double distance = (current_loc-prev_odom_loc_).norm();
     float angle = AngleDiff(current_angle,prev_odom_angle_);
-    double k1 = 0.1;
-    double k2 = 0.1;
+    double k1 = 0.8;
+    double k2 = 0.5;
     double k3 = 0.1;
-    double k4 = 0.1;
+    double k4 = 2.0;
     double magnitude_of_rotation = abs(angle);
     double x_translation_error_stdev= k1*distance+ k2*magnitude_of_rotation;
     double y_translation_error_stdev= k1*distance+ k2*magnitude_of_rotation;
     double rotation_error_stdev= k3*distance+ k4*magnitude_of_rotation;
     poses.clear();
     motion_model(distance,angle,x_translation_error_stdev,y_translation_error_stdev,rotation_error_stdev);
+
+    use_laser = true;
     }
 }
 
