@@ -52,7 +52,10 @@ namespace slam {
 SLAM::SLAM() :
     prev_odom_loc_(0, 0),
     prev_odom_angle_(0),
-    odom_initialized_(false) {}
+    odom_initialized_(false),
+    x_resolution(11),
+    y_resolution(11),
+    theta_resolution(30) {}
 
 void SLAM::GetPose(Eigen::Vector2f* loc, float* angle) const {
   // Return the latest pose estimate of the robot.
@@ -81,6 +84,8 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
       current_point_in_new_base_link.y() = ranges[j] * sin(current_angle);
 
       Eigen::Vector2f query_location = convert_scan_prev_pose( poses[i], current_point_in_new_base_link );
+
+
 
       obs_log_likelihood += obs_prob_table[ int((query_location.x() - min_x_val) / delta_distance) ][ int( (query_location.y() - min_y_val) / delta_distance
  ) ];
@@ -185,6 +190,8 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
 
     if(((last_likelihood_scan_loc-current_loc).norm()>=distance_to_compute_scan) || (abs(AngleDiff(last_likelihood_scan_angle, current_angle))>angle_to_compute_scan)){
       calculate_likelihoods=true;
+      last_likelihood_scan_loc=current_loc;
+      last_likelihood_scan_angle=current_angle;
       }
     if(calculate_likelihoods){
 
