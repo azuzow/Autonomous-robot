@@ -66,7 +66,7 @@ class SLAM {
   void add_new_points_in_map(Pose current_best_pose, const vector<float>& ranges, float angle_min, float angle_max);
   Eigen::Vector2f rotation( Eigen::Vector2f local_frame_loc, float local_frame_angle, Eigen::Vector2f point_in_local_frame );
   Eigen::Vector2f convert_scan_prev_pose(Pose particle_pose, Eigen::Vector2f laser_point);
-
+  void motion_model(float distance, float angle,float x_translation_error_stddev, float y_translation_error_stddev,float rotation_error_stddev);
 
  private:
 
@@ -98,6 +98,16 @@ class SLAM {
 
   // Constructed map to plot
   vector<Eigen::Vector2f> constructed_map;
+
+  float current_angle;
+  Eigen::Vector2f current_loc;
+  Eigen::Vector2f last_likelihood_scan_loc;
+  float last_likelihood_scan_angle;
+  bool calculate_likelihoods; 
+  std::vector<Eigen::Vector4d> poses;
+  int x_resolution;
+  int y_resolution;
+  int theta_resolution;
 };
 }  // namespace slam
 
