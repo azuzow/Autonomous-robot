@@ -68,12 +68,12 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
 
   float angle_diff = (angle_max - angle_min) / ranges.size();
   float current_angle;
-
+   std::cout << "checkpoint 1" << std::endl; 
   for( unsigned int i=0; i<poses.size(); i++ )
   {
     float obs_log_likelihood = 0.0;
     current_angle = angle_min;
-
+   
     for( unsigned int j=0; j<ranges.size(); j++ )
     {
       Eigen::Vector2f current_point_in_new_base_link;
@@ -97,7 +97,7 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
     // Need to add code which computes log likelihood of this pose with max and updates accordingly
 
   }
-
+  std::cout << "checkpoint 2" << std::endl; 
   return new_pose;
 }
 
@@ -140,12 +140,12 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
 
   if( !odom_observed ) return;
 
+  construct_obs_prob_table();
+
   current_best_pose = CorrelativeScanMatching( ranges, angle_min, angle_max );
 
   // Change point cloud according to current_best_pose
   add_new_points_in_map(current_best_pose, ranges, angle_min, angle_max );
-
-  construct_obs_prob_table();
 
   float angle_diff = (angle_max - angle_min) / ranges.size();
   float current_angle = angle_min;
@@ -213,13 +213,17 @@ void SLAM::add_new_points_in_map(Pose current_best_pose, const vector<float>& ra
 
 vector<Vector2f> SLAM::GetMap()
 {
+  std::cout << "GetMap Start" << std::endl; 
   vector<Vector2f> plotting_map;
   // Reconstruct the map as a single aligned point cloud from all saved poses
   // and their respective scans.
   for(int i=0; i<num_points_in_final_plot; i++)
   {
-      plotting_map.push_back( constructed_map[ int( (i * (constructed_map.size() - 1) ) / (num_points_in_final_plot - 1) ) ] );
+      if(constructed_map.size() > 0){    
+        plotting_map.push_back( constructed_map[ int( (i * (constructed_map.size() - 1) ) / (num_points_in_final_plot - 1) ) ] );
+      }
   }
+  std::cout << "GetMap End" << std::endl; 
   return plotting_map;
 }
 
