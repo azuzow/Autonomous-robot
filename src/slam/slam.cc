@@ -56,15 +56,57 @@ SLAM::SLAM() :
 
 void SLAM::GetPose(Eigen::Vector2f* loc, float* angle) const {
   // Return the latest pose estimate of the robot.
-  *loc = Vector2f(0, 0);
-  *angle = 0;
+  *loc = current_best_pose.loc;
+  *angle = current_best_pose.angle;
 }
 
 
 Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min, float angle_max)
 {
   Pose new_pose;
+  float best_likelihood = -100000;
+
+  float angle_diff = (angle_max - angle_min) / ranges.size();
+  float current_angle;
+
+  for( unsigned int i=0; i<poses.size(); i++ )
+  {
+    float obs_log_likelihood = 0.0;
+    current_angle = angle_min;
+
+    for( unsigned int j=0; j<ranges.size(); j++ )
+    {
+      Eigen::Vector2f current_point_in_new_base_link;
+      current_point_in_new_base_link.x() = ranges[j] * cos(current_angle) + 0.2;
+      current_point_in_new_base_link.y() = ranges[j] * sin(current_angle);
+
+      Eigen::Vector2f query_location = convert_scan_prev_pose( poses[i], current_point_in_new_base_link );
+
+      obs_log_likelihood += obs_prob_table[ int((query_location.x() - min_x_val) / delta_distance) ][ int( (query_location.y() - min_y_val) / delta_distance
+ ) ];
+
+      current_angle += angle_diff;
+    }
+
+    float cur_particle_likelihood = obs_weight * obs_log_likelihood + motion_weight * poses[i].log_likelihood;
+    if(cur_particle_likelihood > best_likelihood)
+    {
+      best_likelihood = cur_particle_likelihood;
+      new_pose = poses[i];
+    }
+    // Need to add code which computes log likelihood of this pose with max and updates accordingly
+
+  }
+
   return new_pose;
+}
+
+
+Eigen::Vector2f SLAM::convert_scan_prev_pose(Pose particle_pose, Eigen::Vector2f laser_point)
+{
+    Eigen::Rotation2Df rotation_matrix_new_link_old_link( AngleDiff( particle_pose.angle, current_best_pose.angle ) );
+    Eigen::Rotation2Df rotation_matrix_map_old_link( -current_best_pose.angle );
+    return rotation_matrix_map_old_link * (particle_pose.loc - current_best_pose.loc) + rotation_matrix_new_link_old_link * laser_point;
 }
 
 
@@ -94,7 +136,7 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
 
   if( !odom_observed ) return;
 
-  Pose current_best_pose = CorrelativeScanMatching( ranges, angle_min, angle_max );
+  current_best_pose = CorrelativeScanMatching( ranges, angle_min, angle_max );
 
   // Change point cloud according to current_best_pose
   add_new_points_in_map(current_best_pose, ranges, angle_min, angle_max );
@@ -136,6 +178,7 @@ void SLAM::makeProbTable(Eigen::Vector2f point)
 }
 
 
+
 Vector2f SLAM::rotation( Eigen::Vector2f local_frame_loc, float local_frame_angle, Eigen::Vector2f point_in_local_frame )
 {
   Eigen::Vector2f new_location(0.0, 0.0);
@@ -145,6 +188,8 @@ Vector2f SLAM::rotation( Eigen::Vector2f local_frame_loc, float local_frame_angl
 
   return new_location;
 }
+
+
 
 void SLAM::add_new_points_in_map(Pose current_best_pose, const vector<float>& ranges, float angle_min, float angle_max)
 {

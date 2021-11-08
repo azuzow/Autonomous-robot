@@ -65,6 +65,8 @@ class SLAM {
   Pose CorrelativeScanMatching(const vector<float>& ranges, float angle_min, float angle_max);
   void add_new_points_in_map(Pose current_best_pose, const vector<float>& ranges, float angle_min, float angle_max);
   Eigen::Vector2f rotation( Eigen::Vector2f local_frame_loc, float local_frame_angle, Eigen::Vector2f point_in_local_frame );
+  Eigen::Vector2f convert_scan_prev_pose(Pose particle_pose, Eigen::Vector2f laser_point);
+
 
  private:
 
@@ -74,6 +76,8 @@ class SLAM {
   bool odom_initialized_;
   bool odom_observed;
   int num_points_in_final_plot = 1000;
+
+  Pose current_best_pose;
 
   // Keep symetric in x and y direction
   int min_x_val = -10;
@@ -87,6 +91,10 @@ class SLAM {
   float delta_distance = 0.05;
   vector< vector<float> > obs_prob_table;
   float std_obs_likelihood = 0.01;
+
+  //CorrelativeScanMatching
+  float obs_weight = 3.0/1000;
+  float motion_weight = 1.0/3;
 
   // Constructed map to plot
   vector<Eigen::Vector2f> constructed_map;
