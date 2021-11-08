@@ -71,7 +71,7 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
 
   float angle_diff = (angle_max - angle_min) / ranges.size();
   float current_angle;
-   std::cout << "checkpoint 1" << std::endl;
+   std::cout << "checkpoint 1" << poses.size() << std::endl;
   for( unsigned int i=0; i<poses.size(); i++ )
   {
     float obs_log_likelihood = 0.0;
@@ -79,16 +79,23 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
 
     for( unsigned int j=0; j<ranges.size(); j++ )
     {
+      if(ranges[j] > 9) continue;
       Eigen::Vector2f current_point_in_new_base_link;
       current_point_in_new_base_link.x() = ranges[j] * cos(current_angle) + 0.2;
       current_point_in_new_base_link.y() = ranges[j] * sin(current_angle);
 
       Eigen::Vector2f query_location = convert_scan_prev_pose( poses[i], current_point_in_new_base_link );
 
+      // std::cout << current_point_in_new_base_link << " " << ranges[j] << std::endl;
+
       if(obs_prob_table_init)
       {
+        // std::cout << obs_prob_table_init << i << " In" << query_location.x() << " " << query_location.y() << " " << poses[i].loc.x() << " " << poses[i].loc.y() << std::endl;
+        // std::cout << int((query_location.x() - min_x_val) / delta_distance) << std::endl;
+        // std::cout << int( (query_location.y() - min_y_val) / delta_distance) << std::endl;
         obs_log_likelihood += obs_prob_table[ int((query_location.x() - min_x_val) / delta_distance) ][ int( (query_location.y() - min_y_val) / delta_distance
       ) ];
+      // std::cout << obs_prob_table_init << i << " Out" << std::endl;
       }
 
       current_angle += angle_diff;
@@ -103,7 +110,7 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
     // Need to add code which computes log likelihood of this pose with max and updates accordingly
 
   }
-  std::cout << "checkpoint 2" << std::endl;
+  // std::cout << "checkpoint 2" << std::endl;
   return new_pose;
 }
 
@@ -165,8 +172,8 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
     makeProbTable(current_point);
     current_angle += angle_diff;
   }
-  }
   obs_prob_table_init = true;
+  }
   // std::cout << "end of ObserveLaser" << std::endl;
 }
 
@@ -289,6 +296,8 @@ void SLAM::motion_model(float distance, float angle, float x_translation_error_s
         //all poses for current time step
         poses.push_back(new_pose);
 
+        // std::cout << i << " " << j << " " << k << " " << new_pose.loc << " " << current_loc << std::endl;
+
       }
     }
   }
@@ -298,6 +307,7 @@ void SLAM::motion_model(float distance, float angle, float x_translation_error_s
 
 void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
   odom_observed = true;
+
   if (!odom_initialized_)
   {
     current_angle = odom_angle;
