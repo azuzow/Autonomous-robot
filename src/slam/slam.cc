@@ -193,6 +193,9 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
       last_likelihood_scan_loc=current_loc;
       last_likelihood_scan_angle=current_angle;
       }
+    else{
+      calculate_likelihoods=false;
+    }
     if(calculate_likelihoods){
 
 
@@ -245,7 +248,7 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
   // and save both the scan and the optimized pose.
 
   if( !odom_observed ) return;
-
+  if(calculate_likelihoods){
   construct_obs_prob_table();
 
   current_best_pose = CorrelativeScanMatching( ranges, angle_min, angle_max );
@@ -264,6 +267,7 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
     makeProbTable(current_point);
     current_angle += angle_diff;
   }
+}
 }
 
 
