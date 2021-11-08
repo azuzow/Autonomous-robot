@@ -96,14 +96,14 @@ void PublishMap() {
   t_last = GetMonotonicTime();
   vis_msg_.header.stamp = ros::Time::now();
   ClearVisualizationMsg(vis_msg_);
-   std::cout << "checkpoint 3" << std::endl; 
+   // std::cout << "checkpoint 3" << std::endl;
   const vector<Vector2f> map = slam_.GetMap();
-   std::cout << "checkpoint 4" << std::endl; 
+   // std::cout << "checkpoint 4" << std::endl;
   printf("Map: %lu points\n", map.size());
   for (const Vector2f& p : map) {
     visualization::DrawPoint(p, 0xC0C0C0, vis_msg_);
   }
-   std::cout << "checkpoint 5" << std::endl; 
+   // std::cout << "checkpoint 5" << std::endl;
   visualization_publisher_.publish(vis_msg_);
 }
 

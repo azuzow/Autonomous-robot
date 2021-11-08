@@ -68,12 +68,12 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
 
   float angle_diff = (angle_max - angle_min) / ranges.size();
   float current_angle;
-   std::cout << "checkpoint 1" << std::endl; 
+   std::cout << "checkpoint 1" << std::endl;
   for( unsigned int i=0; i<poses.size(); i++ )
   {
     float obs_log_likelihood = 0.0;
     current_angle = angle_min;
-   
+
     for( unsigned int j=0; j<ranges.size(); j++ )
     {
       Eigen::Vector2f current_point_in_new_base_link;
@@ -82,8 +82,11 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
 
       Eigen::Vector2f query_location = convert_scan_prev_pose( poses[i], current_point_in_new_base_link );
 
-      obs_log_likelihood += obs_prob_table[ int((query_location.x() - min_x_val) / delta_distance) ][ int( (query_location.y() - min_y_val) / delta_distance
- ) ];
+      if(obs_prob_table_init)
+      {
+        obs_log_likelihood += obs_prob_table[ int((query_location.x() - min_x_val) / delta_distance) ][ int( (query_location.y() - min_y_val) / delta_distance
+      ) ];
+      }
 
       current_angle += angle_diff;
     }
@@ -97,7 +100,7 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
     // Need to add code which computes log likelihood of this pose with max and updates accordingly
 
   }
-  std::cout << "checkpoint 2" << std::endl; 
+  std::cout << "checkpoint 2" << std::endl;
   return new_pose;
 }
 
@@ -140,13 +143,13 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
 
   if( !odom_observed ) return;
 
-  construct_obs_prob_table();
 
   current_best_pose = CorrelativeScanMatching( ranges, angle_min, angle_max );
 
   // Change point cloud according to current_best_pose
   add_new_points_in_map(current_best_pose, ranges, angle_min, angle_max );
 
+  construct_obs_prob_table();
   float angle_diff = (angle_max - angle_min) / ranges.size();
   float current_angle = angle_min;
 
@@ -155,9 +158,13 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
     Eigen::Vector2f current_point;
     current_point.x() = ranges[i] * cos(current_angle) + 0.2;
     current_point.y() = ranges[i] * sin(current_angle);
+    // std::cout << "checkpoint in " << i << " " << obs_prob_table_width << " " << obs_prob_table_height << " " << current_point.x() << " " << ranges.size() << std::endl;
     makeProbTable(current_point);
     current_angle += angle_diff;
   }
+
+  obs_prob_table_init = true;
+  // std::cout << "end of ObserveLaser" << std::endl;
 }
 
 
@@ -166,10 +173,12 @@ void SLAM::makeProbTable(Eigen::Vector2f point)
   int ind_x = (point.x() - min_x_val) / delta_distance;
   int ind_y = (point.y() - min_y_val) / delta_distance;
 
-  int iter_x_min = min(ind_x - 20, 0);
-  int iter_y_min = min(ind_y - 20, 0);
-  int iter_x_max = max(ind_x + 20, obs_prob_table_width - 1);
-  int iter_y_max = max(ind_y + 20, obs_prob_table_height - 1);
+  int iter_x_min = max(ind_x - 20, 0);
+  int iter_y_min = max(ind_y - 20, 0);
+  int iter_x_max = min(ind_x + 20, obs_prob_table_width - 1);
+  int iter_y_max = min(ind_y + 20, obs_prob_table_height - 1);
+
+  // std::cout << iter_x_min << " " << iter_x_max << " " << iter_y_min << " " << iter_y_max << endl;
 
   for(int x_iter = iter_x_min; x_iter <= iter_x_max; x_iter++)
   {
@@ -213,17 +222,17 @@ void SLAM::add_new_points_in_map(Pose current_best_pose, const vector<float>& ra
 
 vector<Vector2f> SLAM::GetMap()
 {
-  std::cout << "GetMap Start" << std::endl; 
+  std::cout << "GetMap Start" << std::endl;
   vector<Vector2f> plotting_map;
   // Reconstruct the map as a single aligned point cloud from all saved poses
   // and their respective scans.
   for(int i=0; i<num_points_in_final_plot; i++)
   {
-      if(constructed_map.size() > 0){    
+      if(constructed_map.size() > 0){
         plotting_map.push_back( constructed_map[ int( (i * (constructed_map.size() - 1) ) / (num_points_in_final_plot - 1) ) ] );
       }
   }
-  std::cout << "GetMap End" << std::endl; 
+  std::cout << "GetMap End" << std::endl;
   return plotting_map;
 }
 
