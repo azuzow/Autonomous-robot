@@ -103,7 +103,8 @@ class SLAM {
   Eigen::Vector2f current_loc;
   Eigen::Vector2f last_likelihood_scan_loc;
   float last_likelihood_scan_angle;
-  bool calculate_likelihoods; 
+  bool calculate_likelihoods;
+  bool obs_prob_table_init = false;
   std::vector<Pose> poses;
   int x_resolution;
   int y_resolution;
