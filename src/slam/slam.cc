@@ -53,14 +53,14 @@ SLAM::SLAM() :
     prev_odom_loc_(0, 0),
     prev_odom_angle_(0),
     odom_initialized_(false),
-    x_resolution(5),
-    y_resolution(5),
+    x_resolution(3),
+    y_resolution(3),
     theta_resolution(30) {}
 
 void SLAM::GetPose(Eigen::Vector2f* loc, float* angle) const {
   // Return the latest pose estimate of the robot.
-  *loc = current_best_pose.loc;
-  *angle = current_best_pose.angle;
+  *loc = current_pose.loc;
+  *angle = current_pose.angle;
 }
 
 
@@ -164,6 +164,8 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
   float angle_diff = (angle_max - angle_min) / ranges.size();
   float current_angle = angle_min;
 
+
+
   for(unsigned int i=0; i<ranges.size(); i++)
   {
     Eigen::Vector2f current_point;
@@ -175,6 +177,7 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
   }
   obs_prob_table_init = true;
   use_laser = false;
+  rotation_matrix = Eigen::Rotation2Df(current_best_pose.angle - prev_odom_angle_);
   }
   // std::cout << "end of ObserveLaser" << std::endl;
 }
@@ -279,9 +282,9 @@ void SLAM::motion_model(float distance, float angle, float x_translation_error_s
         float y_delta = y_translation_error_stddev*(2*j/(y_resolution-1)-1);
         float angle_delta= rotation_error_stddev*(2*k/(theta_resolution-1)-1);
 
-        float x_likelihood = (pow(x_delta/y_translation_error_stddev, 2));
-        float y_likelihood = (pow(y_delta/y_translation_error_stddev, 2));
-        float angle_likelihood = (pow(angle_delta/rotation_error_stddev, 2));
+        float x_likelihood = -(pow(x_delta/x_translation_error_stddev, 2));
+        float y_likelihood = -(pow(y_delta/y_translation_error_stddev, 2));
+        float angle_likelihood = -(pow(angle_delta/rotation_error_stddev, 2));
         //Eigen::Vector2f distance_noise(x_translation_error_stdev,y_translation_error_stdev);
         Eigen::Vector2f angle_rotation(cos(angle),sin(angle));
         //whatever current location variable is assumed its called current_loc and current_angle
@@ -290,7 +293,7 @@ void SLAM::motion_model(float distance, float angle, float x_translation_error_s
 
 
         float log_likelihood= x_likelihood+y_likelihood+angle_likelihood;
-        Eigen::Vector4d temp(current_loc.x()+x_delta*cos(angle)-y_delta*sin(angle),current_loc.y()+x_delta*sin(angle)-y_delta*cos(angle),current_angle+angle_delta,log_likelihood);
+        Eigen::Vector4d temp( current_pose.loc.x() + x_delta*cos(current_pose.angle) - y_delta*sin(current_pose.angle), current_pose.loc.y() + x_delta*sin(current_pose.angle) + y_delta*cos(current_pose.angle), current_pose.angle+angle_delta,log_likelihood);
         Pose new_pose;
         new_pose.log_likelihood=temp(3);
         new_pose.loc= Eigen::Vector2f(temp(0),temp(1));
@@ -324,20 +327,24 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
   }
   // Keep track of odometry to estimate how far the robot has moved between
   // poses.
-  prev_odom_angle_ = current_angle;
-    prev_odom_loc_ = current_loc;
+  // prev_odom_angle_ = current_angle;
+  //   prev_odom_loc_ = current_loc;
     current_angle=odom_angle;
     current_loc= odom_loc;
 
-    // Not sure about this two lines
-    current_best_pose.loc = current_best_pose.loc + Eigen::Rotation2Df( odom_angle - prev_odom_angle_ ) * (odom_loc - prev_odom_loc_ );
-    current_best_pose.angle = AngleDiff(current_best_pose.angle, AngleDiff(odom_angle, prev_odom_angle_));
+    // Not sure about these two lines
+    // current_best_pose.loc = current_best_pose.loc + Eigen::Rotation2Df( odom_angle - prev_odom_angle_ ) * (odom_loc - prev_odom_loc_ );
+    // current_best_pose.angle = AngleDiff(current_best_pose.angle, AngleDiff(odom_angle, prev_odom_angle_));
+
+    current_pose.loc = current_best_pose.loc + rotation_matrix * (current_loc - prev_odom_loc_);
+    current_pose.angle = fmod(current_best_pose.angle + AngleDiff(odom_angle, prev_odom_angle_) + M_PI,  2*M_PI) - M_PI;
 
 
-    float distance_to_compute_scan=0.1;
+
+    float distance_to_compute_scan=0.2;
     float angle_to_compute_scan=M_PI/24;
 
-    if(((last_likelihood_scan_loc-current_loc).norm()>=distance_to_compute_scan) || (abs(AngleDiff(last_likelihood_scan_angle, current_angle))>angle_to_compute_scan)){
+    if(((prev_odom_loc_-current_loc).norm()>=distance_to_compute_scan) || (abs(AngleDiff(prev_odom_angle_, current_angle))>angle_to_compute_scan)){
       calculate_likelihoods=true;
       last_likelihood_scan_loc=current_loc;
       last_likelihood_scan_angle=current_angle;
@@ -365,7 +372,12 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
     motion_model(distance,angle,x_translation_error_stdev,y_translation_error_stdev,rotation_error_stdev);
 
     use_laser = true;
+
+
+        prev_odom_loc_ = odom_loc;
+        prev_odom_angle_ = odom_angle;
     }
+
 }
 
 

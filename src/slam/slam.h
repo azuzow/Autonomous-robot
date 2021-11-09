@@ -78,6 +78,7 @@ class SLAM {
   int num_points_in_final_plot = 1000;
 
   Pose current_best_pose;
+  Pose current_pose;
 
   // Keep symetric in x and y direction
   int min_x_val = -10;
@@ -98,6 +99,7 @@ class SLAM {
 
   // Constructed map to plot
   vector<Eigen::Vector2f> constructed_map;
+  Eigen::Rotation2Df rotation_matrix;
 
   float current_angle;
   Eigen::Vector2f current_loc;
