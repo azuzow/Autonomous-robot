@@ -70,38 +70,48 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
   float best_likelihood = -100000;
 
   float angle_diff = (angle_max - angle_min) / ranges.size();
-  float current_angle;
-   std::cout << "checkpoint 1" << poses.size() << std::endl;
+  float cur_angle;
+   // std::cout << "checkpoint 1 " << poses.size() << std::endl;
   for( unsigned int i=0; i<poses.size(); i++ )
   {
     float obs_log_likelihood = 0.0;
-    current_angle = angle_min;
+    cur_angle = angle_min;
 
-    for( unsigned int j=0; j<ranges.size(); j++ )
+    unsigned int j = 0;
+    // std::cout << j << " " << ranges.size() << std::endl;
+    // std::cout << "checkpoint 1 inside first " << i << " " << ranges.size() << std::endl;
+    while(j < ranges.size())
     {
-      if(ranges[j] > 9) continue;
+      // std::cout << j << " start ";
+      if(ranges[j] > 9)
+      {
+        cur_angle += angle_diff*skip_scans;
+        j += 1*skip_scans;
+        continue;
+      }
       Eigen::Vector2f current_point_in_new_base_link;
-      current_point_in_new_base_link.x() = ranges[j] * cos(current_angle) + 0.2;
-      current_point_in_new_base_link.y() = ranges[j] * sin(current_angle);
+      current_point_in_new_base_link.x() = ranges[j] * cos(cur_angle) + 0.2;
+      current_point_in_new_base_link.y() = ranges[j] * sin(cur_angle);
 
       Eigen::Vector2f query_location = convert_scan_prev_pose( poses[i], current_point_in_new_base_link );
 
-      // std::cout << current_point_in_new_base_link << " " << ranges[j] << std::endl;
 
       if(obs_prob_table_init)
       {
-        // std::cout << obs_prob_table_init << i << " In" << query_location.x() << " " << query_location.y() << " " << poses[i].loc.x() << " " << poses[i].loc.y() << std::endl;
-        // std::cout << int((query_location.x() - min_x_val) / delta_distance) << std::endl;
-        // std::cout << int( (query_location.y() - min_y_val) / delta_distance) << std::endl;
         obs_log_likelihood += obs_prob_table[ int((query_location.x() - min_x_val) / delta_distance) ][ int( (query_location.y() - min_y_val) / delta_distance
       ) ];
-      // std::cout << obs_prob_table_init << i << " Out" << std::endl;
+
       }
 
-      current_angle += angle_diff;
+      cur_angle += angle_diff*skip_scans;
+      j += 1*skip_scans;
+      // std::cout << j << std::endl;
     }
 
+    // std::cout << "checkpoint 1 inside " << i << std::endl;
+
     float cur_particle_likelihood = obs_weight * obs_log_likelihood + motion_weight * poses[i].log_likelihood;
+    // float cur_particle_likelihood = motion_weight * poses[i].log_likelihood;
     if(cur_particle_likelihood > best_likelihood)
     {
       best_likelihood = cur_particle_likelihood;
@@ -151,6 +161,8 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
   // for SLAM. If decided to add, align it to the scan from the last saved pose,
   // and save both the scan and the optimized pose.
 
+  // std::cout << "ObserveLaser Start" << std::endl;
+
   if( !odom_observed ) return;
   if(calculate_likelihoods && use_laser)
   {
@@ -162,24 +174,26 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
 
   construct_obs_prob_table();
   float angle_diff = (angle_max - angle_min) / ranges.size();
-  float current_angle = angle_min;
+  float cur_angle = angle_min;
 
 
 
   for(unsigned int i=0; i<ranges.size(); i++)
   {
     Eigen::Vector2f current_point;
-    current_point.x() = ranges[i] * cos(current_angle) + 0.2;
-    current_point.y() = ranges[i] * sin(current_angle);
+    current_point.x() = ranges[i] * cos(cur_angle) + 0.2;
+    current_point.y() = ranges[i] * sin(cur_angle);
     // std::cout << "checkpoint in " << i << " " << obs_prob_table_width << " " << obs_prob_table_height << " " << current_point.x() << " " << ranges.size() << std::endl;
     makeProbTable(current_point);
-    current_angle += angle_diff;
+    cur_angle += angle_diff;
   }
   obs_prob_table_init = true;
   use_laser = false;
   rotation_matrix = Eigen::Rotation2Df(current_best_pose.angle - prev_odom_angle_);
   }
   // std::cout << "end of ObserveLaser" << std::endl;
+
+
 }
 
 
@@ -188,10 +202,10 @@ void SLAM::makeProbTable(Eigen::Vector2f point)
   int ind_x = (point.x() - min_x_val) / delta_distance;
   int ind_y = (point.y() - min_y_val) / delta_distance;
 
-  int iter_x_min = max(ind_x - 20, 0);
-  int iter_y_min = max(ind_y - 20, 0);
-  int iter_x_max = min(ind_x + 20, obs_prob_table_width - 1);
-  int iter_y_max = min(ind_y + 20, obs_prob_table_height - 1);
+  int iter_x_min = max(ind_x - 10, 0);
+  int iter_y_min = max(ind_y - 10, 0);
+  int iter_x_max = min(ind_x + 10, obs_prob_table_width - 1);
+  int iter_y_max = min(ind_y + 10, obs_prob_table_height - 1);
 
   // std::cout << iter_x_min << " " << iter_x_max << " " << iter_y_min << " " << iter_y_max << endl;
 
@@ -199,7 +213,7 @@ void SLAM::makeProbTable(Eigen::Vector2f point)
   {
     for(int y_iter = iter_y_min; y_iter <= iter_y_max; y_iter++)
     {
-      float cur_ll = - ( pow( (ind_x - x_iter)*delta_distance , 2) + pow(  (ind_y - y_iter)*delta_distance , 2 ) );
+      float cur_ll = - ( pow( (ind_x - x_iter)*delta_distance , 2) + pow(  (ind_y - y_iter)*delta_distance , 2 ) ) / obs_variance;
       obs_prob_table[ x_iter][ y_iter ] = max(obs_prob_table[ x_iter][ y_iter ], cur_ll);
     }
   }
@@ -222,18 +236,19 @@ Vector2f SLAM::rotation( Eigen::Vector2f local_frame_loc, float local_frame_angl
 void SLAM::add_new_points_in_map(Pose current_best_pose, const vector<float>& ranges, float angle_min, float angle_max)
 {
   float angle_diff = (angle_max - angle_min) / ranges.size();
-  float current_angle = angle_min + current_best_pose.angle;
+  float cur_angle = angle_min + current_best_pose.angle;
   int i=0;
-  while( angle_max > current_angle )
+  while( angle_max > cur_angle )
   {
     Eigen::Vector2f range_point(ranges[i], 0.0);
-    Eigen::Vector2f new_point = rotation( current_best_pose.loc, current_angle, range_point );
+    Eigen::Vector2f new_point = rotation( current_best_pose.loc, cur_angle, range_point );
     constructed_map.push_back(new_point);
-    current_angle += angle_diff;
+    cur_angle += angle_diff;
     i++;
   }
   return;
 }
+
 
 vector<Vector2f> SLAM::GetMap()
 {
@@ -313,6 +328,8 @@ void SLAM::motion_model(float distance, float angle, float x_translation_error_s
 void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
   odom_observed = true;
 
+  std::cout << "ObserveOdometry Start" << std::endl;
+
   if (!odom_initialized_)
   {
     current_angle = odom_angle;
@@ -341,7 +358,7 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
 
 
 
-    float distance_to_compute_scan=0.2;
+    float distance_to_compute_scan=0.1;
     float angle_to_compute_scan=M_PI/24;
 
     if(((prev_odom_loc_-current_loc).norm()>=distance_to_compute_scan) || (abs(AngleDiff(prev_odom_angle_, current_angle))>angle_to_compute_scan)){
@@ -377,6 +394,7 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
         prev_odom_loc_ = odom_loc;
         prev_odom_angle_ = odom_angle;
     }
+    std::cout << "ObserveOdometry End" << std::endl;
 
 }
 
