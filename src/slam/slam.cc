@@ -251,7 +251,7 @@ vector<Vector2f> SLAM::GetMap()
 
 
 
-void SLAM::motion_model(float distance, float angle, float x_translation_error_stddev,float y_translation_error_stddev,float rotation_error_stddev){
+void SLAM::motion_model(float distance,  float x_translation_error_stddev,float y_translation_error_stddev,float rotation_error_stddev){
 
   //returns table of log likelihoods from motion model
 
@@ -283,14 +283,17 @@ void SLAM::motion_model(float distance, float angle, float x_translation_error_s
         float y_likelihood = (pow(y_delta/y_translation_error_stddev, 2));
         float angle_likelihood = (pow(angle_delta/rotation_error_stddev, 2));
         //Eigen::Vector2f distance_noise(x_translation_error_stdev,y_translation_error_stdev);
-        Eigen::Vector2f angle_rotation(cos(angle),sin(angle));
+       // Eigen::Vector2f angle_rotation(cos(angle),sin(angle));
         //whatever current location variable is assumed its called current_loc and current_angle
         //pose(0): x_loc pose(1) , y_loc , pose(2) theta , log likelihood
 
-
+        std::cout<<"x y delta "<<x_delta<<" "<<y_delta<<std::endl;
+        float term = x_delta*cos(current_best_pose.angle)-y_delta*sin(current_best_pose.angle);
+        float term2 = x_delta*sin(current_best_pose.angle)-y_delta*cos(current_best_pose.angle);
+        std::cout<< "term 1: " << term << " Term2: " << term2 << std::endl;
 
         float log_likelihood= x_likelihood+y_likelihood+angle_likelihood;
-        Eigen::Vector4d temp(current_loc.x()+x_delta*cos(angle)-y_delta*sin(angle),current_loc.y()+x_delta*sin(angle)-y_delta*cos(angle),current_angle+angle_delta,log_likelihood);
+        Eigen::Vector4d temp(current_best_pose.loc.x()+x_delta*cos(current_best_pose.angle)-y_delta*sin(current_best_pose.angle),current_best_pose.loc.y()+x_delta*sin(current_best_pose.angle)-y_delta*cos(current_best_pose.angle),current_best_pose.angle+angle_delta,log_likelihood);
         Pose new_pose;
         new_pose.log_likelihood=temp(3);
         new_pose.loc= Eigen::Vector2f(temp(0),temp(1));
@@ -315,8 +318,7 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
     current_angle = odom_angle;
     current_loc = odom_loc;
     odom_initialized_ = true;
-    last_likelihood_scan_loc=odom_loc;
-    last_likelihood_scan_angle=odom_angle;
+
     prev_odom_angle_ = current_angle;
     prev_odom_loc_ = current_loc;
     use_laser = true;
@@ -324,8 +326,7 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
   }
   // Keep track of odometry to estimate how far the robot has moved between
   // poses.
-  prev_odom_angle_ = current_angle;
-    prev_odom_loc_ = current_loc;
+  
     current_angle=odom_angle;
     current_loc= odom_loc;
 
@@ -334,13 +335,12 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
     current_best_pose.angle = AngleDiff(current_best_pose.angle, AngleDiff(odom_angle, prev_odom_angle_));
 
 
-    float distance_to_compute_scan=0.1;
-    float angle_to_compute_scan=M_PI/24;
+    float distance_to_compute_scan=0.3;
+    float angle_to_compute_scan=M_PI/6;
 
-    if(((last_likelihood_scan_loc-current_loc).norm()>=distance_to_compute_scan) || (abs(AngleDiff(last_likelihood_scan_angle, current_angle))>angle_to_compute_scan)){
+    if(((prev_odom_loc_-current_loc).norm()>=distance_to_compute_scan) || (abs(AngleDiff(prev_odom_angle_, current_angle))>angle_to_compute_scan)){
       calculate_likelihoods=true;
-      last_likelihood_scan_loc=current_loc;
-      last_likelihood_scan_angle=current_angle;
+ 
       }
     else{
         calculate_likelihoods=false;
@@ -353,17 +353,18 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
 
     double distance = (current_loc-prev_odom_loc_).norm();
     float angle = AngleDiff(current_angle,prev_odom_angle_);
-    double k1 = 0.8;
-    double k2 = 0.5;
+    double k1 = 0.1;
+    double k2 = 0.1;
     double k3 = 0.1;
-    double k4 = 2.0;
+    double k4 = 0.1;
     double magnitude_of_rotation = abs(angle);
     double x_translation_error_stdev= k1*distance+ k2*magnitude_of_rotation;
     double y_translation_error_stdev= k1*distance+ k2*magnitude_of_rotation;
     double rotation_error_stdev= k3*distance+ k4*magnitude_of_rotation;
     poses.clear();
-    motion_model(distance,angle,x_translation_error_stdev,y_translation_error_stdev,rotation_error_stdev);
-
+    motion_model(distance,x_translation_error_stdev,y_translation_error_stdev,rotation_error_stdev);
+    prev_odom_angle_ = current_angle;
+    prev_odom_loc_ = current_loc;
     use_laser = true;
     }
 }
