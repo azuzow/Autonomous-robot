@@ -79,6 +79,7 @@ class SLAM {
 
   Pose current_best_pose;
 
+
   // Keep symetric in x and y direction
   int min_x_val = -10;
   int max_x_val = 10;
@@ -91,10 +92,9 @@ class SLAM {
   float delta_distance = 0.05;
   vector< vector<float> > obs_prob_table;
   float std_obs_likelihood = 0.01;
-
-  //CorrelativeScanMatching
-  float obs_weight = 3.0/1000;
-  float motion_weight = 1.0/3;
+ //CorrelativeScanMatching
+  float obs_weight = 0.65/500;
+  float motion_weight = 1.0/3.0;
 
   // Constructed map to plot
   vector<Eigen::Vector2f> constructed_map;

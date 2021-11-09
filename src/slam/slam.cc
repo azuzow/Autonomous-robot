@@ -57,10 +57,12 @@ SLAM::SLAM() :
     y_resolution(5),
     theta_resolution(30) {}
 
+Pose current_pose;
+
 void SLAM::GetPose(Eigen::Vector2f* loc, float* angle) const {
   // Return the latest pose estimate of the robot.
-  *loc = current_best_pose.loc;
-  *angle = current_best_pose.angle;
+  *loc = current_pose.loc;
+  *angle = current_pose.angle;
 }
 
 
@@ -70,19 +72,19 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
   float best_likelihood = -100000;
 
   float angle_diff = (angle_max - angle_min) / ranges.size();
-  float current_angle;
+  float local_current_angle;
    std::cout << "checkpoint 1" << poses.size() << std::endl;
   for( unsigned int i=0; i<poses.size(); i++ )
   {
     float obs_log_likelihood = 0.0;
-    current_angle = angle_min;
+    local_current_angle = angle_min;
 
     for( unsigned int j=0; j<ranges.size(); j++ )
     {
       if(ranges[j] > 9) continue;
       Eigen::Vector2f current_point_in_new_base_link;
-      current_point_in_new_base_link.x() = ranges[j] * cos(current_angle) + 0.2;
-      current_point_in_new_base_link.y() = ranges[j] * sin(current_angle);
+      current_point_in_new_base_link.x() = ranges[j] * cos(local_current_angle) + 0.2;
+      current_point_in_new_base_link.y() = ranges[j] * sin(local_current_angle);
 
       Eigen::Vector2f query_location = convert_scan_prev_pose( poses[i], current_point_in_new_base_link );
 
@@ -98,10 +100,13 @@ Pose SLAM::CorrelativeScanMatching(const vector<float>& ranges, float angle_min,
       // std::cout << obs_prob_table_init << i << " Out" << std::endl;
       }
 
-      current_angle += angle_diff;
+      local_current_angle += angle_diff;
     }
 
+
+  
     float cur_particle_likelihood = obs_weight * obs_log_likelihood + motion_weight * poses[i].log_likelihood;
+    std::cout << "Observation Like:: " << (obs_weight * obs_log_likelihood) << " Motion Model Like:: " << (motion_weight * poses[i].log_likelihood) << std::endl;
     if(cur_particle_likelihood > best_likelihood)
     {
       best_likelihood = cur_particle_likelihood;
@@ -162,16 +167,16 @@ void SLAM::ObserveLaser(const vector<float>& ranges,
 
   construct_obs_prob_table();
   float angle_diff = (angle_max - angle_min) / ranges.size();
-  float current_angle = angle_min;
+  float local_current_angle = angle_min;
 
   for(unsigned int i=0; i<ranges.size(); i++)
   {
     Eigen::Vector2f current_point;
-    current_point.x() = ranges[i] * cos(current_angle) + 0.2;
-    current_point.y() = ranges[i] * sin(current_angle);
+    current_point.x() = ranges[i] * cos(local_current_angle) + 0.2;
+    current_point.y() = ranges[i] * sin(local_current_angle);
     // std::cout << "checkpoint in " << i << " " << obs_prob_table_width << " " << obs_prob_table_height << " " << current_point.x() << " " << ranges.size() << std::endl;
     makeProbTable(current_point);
-    current_angle += angle_diff;
+    local_current_angle += angle_diff;
   }
   obs_prob_table_init = true;
   use_laser = false;
@@ -219,14 +224,14 @@ Vector2f SLAM::rotation( Eigen::Vector2f local_frame_loc, float local_frame_angl
 void SLAM::add_new_points_in_map(Pose current_best_pose, const vector<float>& ranges, float angle_min, float angle_max)
 {
   float angle_diff = (angle_max - angle_min) / ranges.size();
-  float current_angle = angle_min + current_best_pose.angle;
+  float local_current_angle = angle_min + current_best_pose.angle;
   int i=0;
-  while( angle_max > current_angle )
+  while( angle_max > local_current_angle )
   {
     Eigen::Vector2f range_point(ranges[i], 0.0);
-    Eigen::Vector2f new_point = rotation( current_best_pose.loc, current_angle, range_point );
+    Eigen::Vector2f new_point = rotation( current_best_pose.loc, local_current_angle, range_point );
     constructed_map.push_back(new_point);
-    current_angle += angle_diff;
+    local_current_angle += angle_diff;
     i++;
   }
   return;
@@ -279,21 +284,24 @@ void SLAM::motion_model(float distance,  float x_translation_error_stddev,float 
         float y_delta = y_translation_error_stddev*(2*j/(y_resolution-1)-1);
         float angle_delta= rotation_error_stddev*(2*k/(theta_resolution-1)-1);
 
-        float x_likelihood = (pow(x_delta/y_translation_error_stddev, 2));
-        float y_likelihood = (pow(y_delta/y_translation_error_stddev, 2));
-        float angle_likelihood = (pow(angle_delta/rotation_error_stddev, 2));
+        //float x_likelihood = (pow(x_delta/y_translation_error_stddev, 2));
+        float x_likelihood = -(pow(x_delta,2)/pow(x_translation_error_stddev, 2));
+        //float y_likelihood = (pow(y_delta/y_translation_error_stddev, 2));
+        float y_likelihood = -(pow(y_delta,2)/pow(y_translation_error_stddev, 2));
+        //float angle_likelihood = (pow(angle_delta/rotation_error_stddev, 2));
+        float angle_likelihood = -(pow(angle_delta,2)/pow(rotation_error_stddev, 2));
         //Eigen::Vector2f distance_noise(x_translation_error_stdev,y_translation_error_stdev);
        // Eigen::Vector2f angle_rotation(cos(angle),sin(angle));
         //whatever current location variable is assumed its called current_loc and current_angle
         //pose(0): x_loc pose(1) , y_loc , pose(2) theta , log likelihood
 
         std::cout<<"x y delta "<<x_delta<<" "<<y_delta<<std::endl;
-        float term = x_delta*cos(current_best_pose.angle)-y_delta*sin(current_best_pose.angle);
-        float term2 = x_delta*sin(current_best_pose.angle)-y_delta*cos(current_best_pose.angle);
+        float term = x_delta*cos(current_pose.angle)-y_delta*sin(current_pose.angle);
+        float term2 = x_delta*sin(current_pose.angle)+y_delta*cos(current_pose.angle);
         std::cout<< "term 1: " << term << " Term2: " << term2 << std::endl;
 
         float log_likelihood= x_likelihood+y_likelihood+angle_likelihood;
-        Eigen::Vector4d temp(current_best_pose.loc.x()+x_delta*cos(current_best_pose.angle)-y_delta*sin(current_best_pose.angle),current_best_pose.loc.y()+x_delta*sin(current_best_pose.angle)-y_delta*cos(current_best_pose.angle),current_best_pose.angle+angle_delta,log_likelihood);
+        Eigen::Vector4d temp(current_pose.loc.x()+x_delta*cos(current_pose.angle)-y_delta*sin(current_pose.angle),current_pose.loc.y()+x_delta*sin(current_pose.angle)+y_delta*cos(current_pose.angle),current_pose.angle+angle_delta,log_likelihood);
         Pose new_pose;
         new_pose.log_likelihood=temp(3);
         new_pose.loc= Eigen::Vector2f(temp(0),temp(1));
@@ -331,8 +339,8 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
     current_loc= odom_loc;
 
     // Not sure about this two lines
-    current_best_pose.loc = current_best_pose.loc + Eigen::Rotation2Df( odom_angle - prev_odom_angle_ ) * (odom_loc - prev_odom_loc_ );
-    current_best_pose.angle = AngleDiff(current_best_pose.angle, AngleDiff(odom_angle, prev_odom_angle_));
+    current_pose.loc = current_best_pose.loc + Eigen::Rotation2Df( current_best_pose.angle - prev_odom_angle_ ) * (odom_loc - prev_odom_loc_ );
+    current_pose.angle = AngleDiff(current_best_pose.angle, AngleDiff(odom_angle, prev_odom_angle_));
 
 
     float distance_to_compute_scan=0.3;
@@ -353,10 +361,10 @@ void SLAM::ObserveOdometry(const Vector2f& odom_loc, const float odom_angle) {
 
     double distance = (current_loc-prev_odom_loc_).norm();
     float angle = AngleDiff(current_angle,prev_odom_angle_);
-    double k1 = 0.1;
-    double k2 = 0.1;
-    double k3 = 0.1;
-    double k4 = 0.1;
+    double k1 = 0.8;
+    double k2 = 0.5;
+    double k3 = 0.5;
+    double k4 = 2.0;
     double magnitude_of_rotation = abs(angle);
     double x_translation_error_stdev= k1*distance+ k2*magnitude_of_rotation;
     double y_translation_error_stdev= k1*distance+ k2*magnitude_of_rotation;
