@@ -116,6 +116,7 @@ void OdometryCallback(const nav_msgs::Odometry& msg) {
 }
 
 void GoToCallback(const geometry_msgs::PoseStamped& msg) {
+  std::cout<< "GoToCallback"<<std::endl;
   const Vector2f loc(msg.pose.position.x, msg.pose.position.y);
   const float angle =
       2.0 * atan2(msg.pose.orientation.z, msg.pose.orientation.w);
@@ -136,9 +137,12 @@ void LocalizationCallback(const amrl_msgs::Localization2DMsg msg) {
   if (FLAGS_v > 0) {
     printf("Localization t=%f\n", GetWallTime());
   }
+  
 
   navigation_->UpdateLocation(Vector2f(msg.pose.x, msg.pose.y), msg.pose.theta);
 }
+
+
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, false);
