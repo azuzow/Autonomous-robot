@@ -43,6 +43,7 @@ length: 47 cm
 #include "shared/math/math_util.h"
 #include "simple_queue.h"
 #include "vector_map/vector_map.h"
+#include "amrl_msgs/VisualizationMsg.h"
 
 
 #ifndef NAVIGATION_H
@@ -190,6 +191,12 @@ Eigen::Vector2i neighborhoodLookup(int index);
 
 void recalculate_path(Eigen::Vector2f destination_loc);
 
+void drawNavigationPath(amrl_msgs::VisualizationMsg &msg);
+
+void drawOpenList(amrl_msgs::VisualizationMsg &msg);
+
+SimpleQueue< std::pair<int, int> , double > openList;
+
 
 
 
@@ -270,7 +277,7 @@ void recalculate_path(Eigen::Vector2f destination_loc);
     Eigen::Matrix2f rotateMaptoBase;
     // Map of the environment.
     vector_map::VectorMap map_;
-   
+    bool found_path;  
   /*****************************************************/
 
 };

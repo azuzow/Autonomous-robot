@@ -79,7 +79,8 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     max_acceleration_magnitude(4),
     max_deceleration_magnitude(4),
     D1(1),
-    D2(1.414) {
+    D2(1.414),
+    found_path(true) {
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
   viz_pub_ = n->advertise<VisualizationMsg>("visualization", 1);
@@ -92,6 +93,9 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
   if(map_file.empty()){
     std::cout << "No Map" << std::endl;
   }
+  else{
+    std::cout << "Map Loaded:" << map_file << std::endl;
+  }
 
 }
 
@@ -100,12 +104,14 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   std::cout << "Enter SetNavGoal()" << std::endl;
   destinationLoc = loc;
   //start position
-  std::cout << "Robot Loc : " <<  robot_loc_ <<std::endl;
+  //Eigen::Vector2f starting_location = Vector2f(-26.3, 8.3); 
+  //destinationLoc = Vector2f(-13.44, 13.59);
+  std::cout << "Starting Location : " <<  robot_loc_ << std::endl;
   initialization(robot_loc_);
   // find path
   std::cout << "Destination Loc : " <<  destinationLoc << std::endl;
   aStarPathFinder(destinationLoc);
-
+  found_path = false;
   //initMap();
 }
 
@@ -663,7 +669,7 @@ double Navigation::calculateHeuristic(Eigen::Vector2f node_loc, Eigen::Vector2f 
   double heuristic;
   double dx = abs(node_loc.x() - target_loc.x());
   double dy = abs(node_loc.y() - target_loc.y());
-  heuristic = D1 * (dx + dy) + (D2 - 2 * D1) * std::min(dx,dy); 
+  heuristic = D1 * (dx + dy) + (D2 - 2 * D1) * std::min(dx,dy);
   //std::cout << "calculateHeuristic:: Exit()" << std::endl;
   return heuristic;
 }
@@ -671,40 +677,46 @@ double Navigation::calculateHeuristic(Eigen::Vector2f node_loc, Eigen::Vector2f 
 
 
 void Navigation::aStarPathFinder(Eigen::Vector2f destination_loc){
-  std::cout << "aStarPathFinder:: Enter()" << std::endl;
-  SimpleQueue< std::pair<int, int> , double > openList;
-  
-  std::map< std::pair<int, int> , Node > closedList;
+
+ 
+
 
   bool foundDestination = false;
   std::pair <int, int> current_node_id;
-  Node current;
-
+  
   /**** HARD CODED DESTINATION FOR DEBUGGING ****/
-  destination_loc.x() = 6.0;
-  destination_loc.y() = 16.0;
+  //destination_loc.x() = 6.0;
+  //destination_loc.y() = 16.0;
   /**** HARD CODED DESTINATION FOR DEBUGGING ****/
 
   pair<int, int> start_id = {0, 0};
   destinationLoc = destination_loc;
   float  goal_bounds = 1;
 
-  //std::cout << "aStarPathFinder:: Robot Loc" << robot_loc_ << std::endl;
-  //std::cout << "aStarPathFinder:: Destination Loc" << destination_loc << std::endl;
+
   int num_of_iterations = 0;
   
   openList.Push(start_id, 1000000);
+ //current_node_id = start_id;
+  Node current;
+
 
   while(!openList.Empty()){
   
+    current_node_id = openList.Pop();
+    current = node_map[current_node_id];
 
-    //std::cout << "Nodes: " << current_node_id.first << ":" << current_node_id.second <<std::edln;
-    
+   /* std::cout<< "========================================" << std::endl;
+    std::cout<< "Current Node Loc: " << current.loc << std::endl;
+    //std::cout<< "neighbor id first: " << next_neighbor.id.first << std::endl;
+    //std::cout<< "neighbor id second: " << next_neighbor.id.second << std::endl;
+    std::cout<< "Current Node X: " << current.index.x() << std::endl;
+    std::cout<< "Current Node Y: " << current.index.y() << std::endl;
+    std::cout<< "Current Node Cost (g): " << current.g << std::endl;          
+    std::cout<< "========================================" << std::endl;*/
 
     float diff = (destination_loc - current.loc).norm();
 
-    
-    //std::cout << "aStarPathFinder:: Diff --- " << diff << std::endl;
     if(diff < goal_bounds){
       foundDestination = true;
       break;
@@ -712,46 +724,49 @@ void Navigation::aStarPathFinder(Eigen::Vector2f destination_loc){
 
     for(Edge neighbor : current.neighbors){
       
-      //TODO -- calculate total weight with current move cost and neighbor weight
+      /*std::cout<< "========================================" << std::endl;
+      std::cout<< "neighbor num: " << neighbor.neighbor_num << std::endl;
+      std::cout<< "neighbor id first: " << neighbor.id.first << std::endl;
+      std::cout<< "neighbor id second: " << neighbor.id.second << std::endl;
+      std::cout<< "neighbor index X: " << neighbor.neighbor_ind.x() << std::endl;
+      std::cout<< "neighbor index Y: " << neighbor.neighbor_ind.y() << std::endl;
+      std::cout<< "neighbor weight: " << neighbor.weight << std::endl;
+      std::cout<< "========================================" << std::endl;*/
+      
       double totalWeight = current.g + neighbor.weight;
+      //std::cout<< "TW =  " << totalWeight << " Current Node g = " << current.g << " NW = " << neighbor.weight <<  std::endl;
 
-      if(!openList.Exists(neighbor.id) && !closedList.count(neighbor.id) ){
+
+      if(!node_map.count(neighbor.id) ){
         Node a_node;
         a_node = nodeSetup(current, neighbor.neighbor_num);
-        a_node.g = totalWeight;
-        a_node.h = calculateHeuristic( a_node.loc, destination_loc);
-        a_node.f = a_node.g + a_node.h;
-        openList.Push(neighbor.id, a_node.f);
+        float heuristic = calculateHeuristic( a_node.loc, destination_loc);
+        //std::cout<< "f =  " << (totalWeight + heuristic) <<  std::endl;
+        openList.Push(neighbor.id, totalWeight + heuristic);
         }
       else{
         if(totalWeight < node_map[neighbor.id].g){
           node_map[neighbor.id].parent_id = current.id;
           node_map[neighbor.id].g = totalWeight;
-          node_map[neighbor.id].h = calculateHeuristic(node_map[neighbor.id].loc, destination_loc);
-          node_map[neighbor.id].f = node_map[neighbor.id].g + node_map[neighbor.id].h;
-          
-          if(closedList.count(neighbor.id)){
-            closedList.erase(neighbor.id);
-            openList.Push(neighbor.id, node_map[neighbor.id].f);
-          }
+          float heuristic = calculateHeuristic(node_map[neighbor.id].loc, destination_loc);
+          //std::cout<< "f =  " << (totalWeight + heuristic) <<  std::endl;
+          openList.Push(neighbor.id, totalWeight + heuristic);   
         }  
       }
     }
-    current_node_id = openList.Pop();
-    current = node_map[current_node_id];
-    closedList.erase(current_node_id);
     num_of_iterations++;
-    std::cout << "Number of Iterations: " << num_of_iterations <<std::endl;
+    //std::cout << "Number of Iterations: " << num_of_iterations <<std::endl;
   }
     if(foundDestination){
       std::cout << "Found Destination" << std::endl;
       path_navigation = construct_path(current);
     }
     else{
-      std::cout << "Failed to find destination" << std::endl;
+      //std::cout << "Failed to find destination" << std::endl;
     }
-    std::cout << "aStarPathFinder :: Exit()" << std::endl;
+    //std::cout << "aStarPathFinder :: Exit()" << std::endl;
   }
+
 
 Eigen::Vector2i Navigation::neighborhoodLookup(int index){
 
@@ -762,7 +777,7 @@ Eigen::Vector2i directional_moves[9] = {
     Eigen::Vector2i(-1, 0),  //West
     Eigen::Vector2i(0,0),    //center = ignore
     Eigen::Vector2i(1,0),    //east
-    Eigen::Vector2i(-1,1),   // SouthWest
+    Eigen::Vector2i(-1,-1),   // SouthWest
     Eigen::Vector2i(0,-1),   // South
     Eigen::Vector2i(1,-1)   //SouthEast
   };
@@ -786,6 +801,7 @@ Edge Navigation::NeighborSetup(Eigen::Vector2i loc_index, int neighbor_number){
   vector<Edge> neighbors;
 
   for(int i = 0; i < MAX_NEIGHBORS; i++){
+
     if(i != 4){
       Edge neighbor = NeighborSetup(node.index, i);
       if(isValid(node.loc, node.index, neighbor.neighbor_ind)){
@@ -797,7 +813,7 @@ Edge Navigation::NeighborSetup(Eigen::Vector2i loc_index, int neighbor_number){
 }
 
 
-  vector<line2f> Navigation::findMargins(line2f line_edge){
+vector<line2f> Navigation::findMargins(line2f line_edge){
     vector<line2f> margins;
 
     Vector2f line_edge_vector = line_edge.p1 + 
@@ -865,9 +881,9 @@ Edge Navigation::NeighborSetup(Eigen::Vector2i loc_index, int neighbor_number){
     while(id != start_id){
         path_navigation.push_back(node_map[id]);
         id = node_map[id].parent_id; 
-        std::reverse(path_navigation.begin(), path_navigation.end());
     }
 
+    std::reverse(path_navigation.begin(), path_navigation.end());
     path = path_navigation; 
     return path;
   }
@@ -897,6 +913,8 @@ Edge Navigation::NeighborSetup(Eigen::Vector2i loc_index, int neighbor_number){
       i++;
     }
 
+    std::cout << "The Closest Node: " << closestNode.loc << std::endl;
+
     if(minDistance > minimum_radius){
       NEED_TO_RECALCULATE_PATH = true;
       return closestNode;
@@ -912,6 +930,7 @@ Edge Navigation::NeighborSetup(Eigen::Vector2i loc_index, int neighbor_number){
         carrotIndex = j;
         break;
       }
+
       j++;
     }
 
@@ -920,13 +939,15 @@ Edge Navigation::NeighborSetup(Eigen::Vector2i loc_index, int neighbor_number){
     while(k > closestNodeIndex){
       Vector2f node_loc_ = path_navigation[k].loc;
 
-      if(!(map_.Intersects(robot_loc_, node_loc_))){
+      if(!(map_.Intersects(current_loc, node_loc_))){
         carrot = path_navigation[k];
         return carrot;
       }
 
-      if(k == closestNodeIndex + 1){
+      if(k < closestNodeIndex + 5){
         NEED_TO_RECALCULATE_PATH = true;
+        //carrot = path_navigation[k];
+        return carrot;
       }
 
       k--;
@@ -942,10 +963,11 @@ Edge Navigation::NeighborSetup(Eigen::Vector2i loc_index, int neighbor_number){
 void Navigation::initialization(Eigen::Vector2f starting_loc){
   std::cout << "Initalization :: Enter()" << std::endl;
   node_map.clear();
+  path_navigation.clear();
 
   Node start;
   
-  start.h = std::numeric_limits<float>::max();
+  //start.h = std::numeric_limits<float>::max();
   start.g = 0;
   start.parent_id.first = 0;
   start.parent_id.second = 0;
@@ -987,6 +1009,22 @@ void Navigation::recalculate_path(Vector2f destination_loc){
 
 }
 
+void Navigation::drawNavigationPath(amrl_msgs::VisualizationMsg &msg){
+
+  Vector2f start = node_map[path_navigation.front().id].loc;
+  Vector2f goal = node_map[path_navigation.back().id].loc;
+  visualization::DrawCross(start, 0.5, 0xff0000, msg);
+  visualization::DrawCross(goal, 0.5, 0xff0000, msg);
+
+
+  for(Node point : path_navigation){
+
+    Vector2f start_location = point.loc;
+    Vector2f end_location = node_map[point.parent_id].loc; 
+    visualization::DrawLine(start_location, end_location, 0x009c08, msg);
+  }
+
+}
 
 
 /******************************************************************************/
@@ -1023,8 +1061,9 @@ void Navigation::Run() {
 
   // find best path based predicted location
   
-  if(DESTINATION_REACHED){
-    std::cout<<"Run(): Reached Destination - Navigation is complete!!!" << std::endl;
+  if(found_path){
+    //std::cout<<"Run(): Reached Destination - Navigation is complete!!!" << std::endl;
+    ros::Duration(0.01).sleep();
   }
   else{
 
@@ -1052,6 +1091,7 @@ void Navigation::Run() {
 
     // std::cout<<robot_loc_.x()<<" "<<robot_loc_.y()<<std::endl;
 
+    drawNavigationPath(global_viz_msg_);
     // Add timestamps to all messages.
     local_viz_msg_.header.stamp = ros::Time::now();
     global_viz_msg_.header.stamp = ros::Time::now();
@@ -1066,14 +1106,17 @@ void Navigation::Run() {
     if(NEED_TO_RECALCULATE_PATH){
       std::cout << "Run(): Recalculating Path ...." << std::endl;
       recalculate_path(destinationLoc);
+      NEED_TO_RECALCULATE_PATH = false;
       ros::Duration(0.5).sleep();
     }
   }
 
+  
+
   // sleep(1);
   if (drive_msg_.velocity == 0)
   {
-    exit(0);
+    //exit(0);
   }
 }
 
