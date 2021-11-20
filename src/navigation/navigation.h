@@ -195,7 +195,7 @@ void drawNavigationPath(amrl_msgs::VisualizationMsg &msg);
 
 void drawOpenList(amrl_msgs::VisualizationMsg &msg);
 
-SimpleQueue< std::pair<int, int> , double > openList;
+
 
 
 

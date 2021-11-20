@@ -533,9 +533,10 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_free_path_length=-1000.0;
   float current_clearance=-1000.0;
   float distance_needed_to_stop= (max_speed*max_speed)/(2*max_deceleration_magnitude);
-  // float current_free_path_angle=-1000.0;
+  float current_free_path_angle=-1000.0;
   // float current_distance_score=-10000;
   float max_score = -1000000.0; // total_weights;
+  float optimal_angle = 0;
 
   float current_score=0, curvature_score;
   std::pair<float, float> free_path_length_angle;
@@ -561,7 +562,9 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     // {
     //   continue;
     // }
-    // current_free_path_angle = free_path_pair.second;
+    current_free_path_angle = free_path_pair.second;
+
+    
     curvature_score = abs(current_curvature);
     // current_free_path_angle = free_path_length_angle.second;
 
@@ -569,6 +572,17 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     //// first is length second is angle
     // current_length_and_angle = distanceAlongPath(target_point.x(), target_point.y(), current_curvature);
     // current_length_and_angle.second *= .9;
+
+
+    /* Find Angle  */
+    float x = (1/current_curvature) * cos(current_free_path_angle+ robot_angle_) + robot_loc_.x();
+    float y = (1/current_curvature) * sin(current_free_path_angle + robot_angle_) + robot_loc_.y();
+    Eigen::Vector2f point = Vector2f(x,y);
+    
+
+    //distance to goal
+    float diff = (target_point - point).norm();
+
 
     current_clearance = findNearestPoint( current_curvature, free_path_pair.second );
     if(current_clearance>3|| current_free_path_length<.3){
@@ -581,8 +595,9 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     // current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = 5 * current_free_path_length + 4 * curvature_score + 3 * current_clearance;
+    current_score = 5 * current_free_path_length + 4 * curvature_score + 3 * current_clearance + diff * 6;
 
+    //current_score = 5 * current_free_path_length + 3 * current_clearance + diff * 6;
      // std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length << " current_clearance: " << 3*current_clearance << " Curvature score: " << 4*curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
    if ( max_score < current_score )
@@ -591,6 +606,9 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
       optimal_path.curvature=current_curvature;
       optimal_path.clearance=current_clearance;
       optimal_path.free_path_length=current_free_path_length;
+      //new
+      optimal_angle = current_free_path_angle;
+      //optimal_path.angle=optimal_path.angle;
       optimal_path.score=current_score;
       max_score = current_score;
     }
@@ -649,6 +667,11 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     }
   }
    ***/
+  float x = (1/optimal_path.curvature) * cos(optimal_angle+ robot_angle_) ;
+  float y = (1/optimal_path.curvature) * sin(optimal_angle + robot_angle_) ;
+  Eigen::Vector2f point = Vector2f(x,y);
+
+  visualization::DrawCross(point, 0.5, 0xff0000, global_viz_msg_);
 
   std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<< std::endl;
   if(optimal_path.free_path_length == -1000)
@@ -679,7 +702,7 @@ double Navigation::calculateHeuristic(Eigen::Vector2f node_loc, Eigen::Vector2f 
 void Navigation::aStarPathFinder(Eigen::Vector2f destination_loc){
 
  
-
+SimpleQueue< std::pair<int, int> , double > openList;
 
   bool foundDestination = false;
   std::pair <int, int> current_node_id;
