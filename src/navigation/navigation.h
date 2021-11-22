@@ -35,10 +35,26 @@ length: 47 cm
 #include<deque>
 #include <algorithm>
 
+
 #include "eigen3/Eigen/Dense"
+#include "eigen3/Eigen/Geometry"
+#include "shared/math/geometry.h"
+#include "shared/math/line2d.h"
+#include "shared/math/math_util.h"
+#include "simple_queue.h"
+#include "vector_map/vector_map.h"
+#include "amrl_msgs/VisualizationMsg.h"
+
 
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
+
+/*      */
+#define X_MAX 1000
+#define X_STEP 20
+#define Y_MAX 500
+#define Y_STEP 20
+/*      */
 
 namespace ros {
   class NodeHandle;
@@ -55,6 +71,26 @@ struct PathOption {
   Eigen::Vector2f closest_point;
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 };
+
+struct Edge {
+  pair<int,int> id;
+  float weight;
+  Eigen::Vector2i neighbor_ind;
+  int neighbor_num;
+};
+
+
+struct Node {
+  Eigen::Vector2f loc;
+  pair<int,int> parent_id; 
+  pair<int,int> id;
+  Eigen::Vector2i index;
+  float g;
+  float h;
+  float f;
+  std::vector<Edge> neighbors;
+};
+
 
 class Navigation {
  public:
@@ -128,6 +164,43 @@ class Navigation {
 
   PathOption find_optimal_path(unsigned int total_curves, float min_curve,const Eigen::Vector2f target_point);
 
+  
+/******************************************************************************/
+/************************Public : Global Planning********************************/
+double calculateHeuristic(Eigen::Vector2f node, Eigen::Vector2f target);
+
+void aStarPathFinder(Eigen::Vector2f global_target_loc);
+
+Edge NeighborSetup(Eigen::Vector2i loc_index, int neighbor_number);
+
+std::vector<Edge> findEightNeighbors(Node node);
+
+std::vector<geometry::line2f> findMargins(geometry::line2f line_edge);
+
+bool isValid(Eigen::Vector2f node_loc, Eigen::Vector2i node_index, Eigen::Vector2i neighbor_ind);
+
+std::vector<Node> construct_path(Node destination);
+
+Node findTheCarrot(Eigen::Vector2f current_loc);
+
+void initialization(Eigen::Vector2f starting_loc);
+
+Node nodeSetup(Node node, int neighbor_num);
+
+Eigen::Vector2i neighborhoodLookup(int index);
+
+void recalculate_path(Eigen::Vector2f destination_loc);
+
+void drawNavigationPath(amrl_msgs::VisualizationMsg &msg);
+
+void drawOpenList(amrl_msgs::VisualizationMsg &msg);
+
+
+
+
+
+
+  /******************************************************************************/
   //min = -pi/2
   float min_curve = -M_PI_2;
   //max = pi/2
@@ -184,6 +257,30 @@ class Navigation {
   std::deque<float> previous_omegas;
   std::deque<float> previous_angles;
   PathOption best_path;
+
+  /******************************************************/
+  /*************Private :Global Planning*****************/
+    float D1;
+    float D2;
+    Eigen::Vector2f goal; //global navigation target
+    std::vector<Node> path_navigation; //navigation path to destination
+    uint64_t idCounter = 0;
+    std::map<pair<int, int>, Node> node_map;
+    float resolution = 0.25;
+    float diagonal_movement = 1.414 * resolution;
+    float straight_movement = 1 * resolution;
+    float minimum_radius = 2.0;
+    float buffer = 0.25;
+    bool NEED_TO_RECALCULATE_PATH = false;
+    bool DESTINATION_REACHED = false;
+    Eigen::Vector2f destinationLoc;
+    Eigen::Matrix2f rotateMaptoBase;
+    // Map of the environment.
+    vector_map::VectorMap map_;
+    bool found_path;
+    bool found_target; 
+  /*****************************************************/
+
 };
 
 }  // namespace navigation
