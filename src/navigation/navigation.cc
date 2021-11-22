@@ -80,7 +80,8 @@ Navigation::Navigation(const string& map_file, ros::NodeHandle* n) :
     max_deceleration_magnitude(4),
     D1(1),
     D2(1.414),
-    found_path(true) {
+    found_path(true),
+    found_target(false){
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>(
       "ackermann_curvature_drive", 1);
   viz_pub_ = n->advertise<VisualizationMsg>("visualization", 1);
@@ -112,6 +113,7 @@ void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   std::cout << "Destination Loc : " <<  destinationLoc << std::endl;
   aStarPathFinder(destinationLoc);
   found_path = false;
+  found_target = false;
   //initMap();
 }
 
@@ -181,11 +183,16 @@ void Navigation::updateSpeed(PathOption optimal_path){
   // speed= sqrt(x*x + y*y);
   speed = drive_msg_.velocity;
   float distance = optimal_path.free_path_length;
-
-
+  float distance2goal = (robot_loc_ - destinationLoc).norm();
+  /*std::cout<< "=================================================" << std::endl;
+  std::cout << " Distance2Goal = " << dist_to_goal << std::endl;
+  std::cout<< "=================================================" << std::endl;*/
   // time_needed_to_stop= (speed*speed)/max_deceleration_magnitude;
   //std::cout<<"==================="<<std::endl;
   float distance_needed_to_stop= (max_speed*max_speed)/(2*max_deceleration_magnitude);
+  /*std::cout<< "=================================================" << std::endl;
+  std::cout << " Distance Needed to Stop = " << distance_needed_to_stop << std::endl;
+  std::cout<< "=================================================" << std::endl;*/
   //std::cout<<"distance needed to stop "<<distance_needed_to_stop<<std::endl;
   //std::cout<<"==================="<<std::endl;
   // distance_needed_to_cruise=(speed*speed)/(2*max_acceleration_magnitude);
@@ -211,6 +218,9 @@ void Navigation::updateSpeed(PathOption optimal_path){
     {
       drive_msg_.velocity = speed+ (max_acceleration_magnitude*1/20);
     }
+  }
+  else if (distance2goal <= (10*distance_needed_to_stop)){
+    found_target = true;
   }
 
   else
@@ -526,6 +536,7 @@ void Navigation::DrawCar()
 //   return best_curvature;
 // }
 
+
 PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_curve, const Eigen::Vector2f target_point)
 {
 
@@ -533,10 +544,11 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   float current_free_path_length=-1000.0;
   float current_clearance=-1000.0;
   float distance_needed_to_stop= (max_speed*max_speed)/(2*max_deceleration_magnitude);
-  float current_free_path_angle=-1000.0;
+  //float current_free_path_angle=-1000.0;
   // float current_distance_score=-10000;
   float max_score = -1000000.0; // total_weights;
-  float optimal_angle = 0;
+  //float optimal_angle = 0;
+  //int path_num = 1000;
 
   float current_score=0, curvature_score;
   std::pair<float, float> free_path_length_angle;
@@ -545,7 +557,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
   PathOption optimal_path;
   for(unsigned int i =0; i<total_curves;i++)
   {
-    current_curvature =  min_curve + i*0.1;
+    current_curvature =  min_curve + i*0.2;
     //std::cout<<"curves "<<current_curvature<<std::endl;
     std::pair<float,float>free_path_pair= free_path_length_function( current_curvature );
     // first is length second is angle
@@ -562,7 +574,7 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     // {
     //   continue;
     // }
-    current_free_path_angle = free_path_pair.second;
+    //current_free_path_angle = free_path_pair.second;
 
     
     curvature_score = abs(current_curvature);
@@ -575,13 +587,16 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
 
     /* Find Angle  */
-    float x = (1/current_curvature) * cos(current_free_path_angle+ robot_angle_) + robot_loc_.x();
-    float y = (1/current_curvature) * sin(current_free_path_angle + robot_angle_) + robot_loc_.y();
+
+    float theta = current_free_path_length/ (1/current_curvature);
+    float x = (1/current_curvature) * sin((theta));
+    float y = (1/current_curvature) * (1 - (cos(theta)));
+    //float y = (1/current_curvature) * sin(current_free_path_angle);
     Eigen::Vector2f point = Vector2f(x,y);
     
 
     //distance to goal
-    float diff = (target_point - point).norm();
+    float diff = (point - target_point).norm();
 
 
     current_clearance = findNearestPoint( current_curvature, free_path_pair.second );
@@ -595,8 +610,10 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
 
     // current_distance_score= findDistanceofPointfromCurve(target_point.x(),target_point.y(),current_curvature);
 
-    current_score = 5 * current_free_path_length + 4 * curvature_score + 3 * current_clearance + diff * 6;
-
+    current_score = 1 * current_free_path_length + 4 * curvature_score + 3 * current_clearance - diff *8;
+    //std::cout<< "=================================================" << std::endl;
+    //std::cout << "Path #" << i <<" Score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length << " current_clearance: " << 3*current_clearance << " Curvature score: " << 4*curvature_score << " Distance2Goal: " << diff <<std::endl;
+   //std::cout<< "=================================================" << std::endl;
     //current_score = 5 * current_free_path_length + 3 * current_clearance + diff * 6;
      // std::cout << " score terms: current score" << current_score << " current free path length: " << 5*current_free_path_length << " current_clearance: " << 3*current_clearance << " Curvature score: " << 4*curvature_score << std::endl;
     // std::cout << "Max score: " << max_score << " " << current_score << "\n" << std::endl;
@@ -607,14 +624,17 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
       optimal_path.clearance=current_clearance;
       optimal_path.free_path_length=current_free_path_length;
       //new
-      optimal_angle = current_free_path_angle;
+      //path_num = i;
+     // optimal_angle = current_free_path_angle;
       //optimal_path.angle=optimal_path.angle;
       optimal_path.score=current_score;
       max_score = current_score;
     }
 
 
+
     visualization::DrawPathOption(current_curvature, current_free_path_length, current_clearance, local_viz_msg_);
+    visualization::DrawPoint(point, 0xff0000, local_viz_msg_);
   }
 
   /** for(unsigned int i =0; i<total_curves;i++)
@@ -667,13 +687,18 @@ PathOption Navigation::find_optimal_path(unsigned int total_curves, float min_cu
     }
   }
    ***/
-  float x = (1/optimal_path.curvature) * cos(optimal_angle+ robot_angle_) ;
-  float y = (1/optimal_path.curvature) * sin(optimal_angle + robot_angle_) ;
-  Eigen::Vector2f point = Vector2f(x,y);
+  //float x = (1/optimal_path.curvature) * cos(-(optimal_angle+ robot_angle_)) ;
+  //float y = (1/optimal_path.curvature) * sin(optimal_angle + robot_angle_) ;
+  //Eigen::Vector2f point = Vector2f(x,y);
+  //visualization::DrawCross(target_point, 0.5, 0xff0000, global_viz_msg_);
 
-  visualization::DrawCross(point, 0.5, 0xff0000, global_viz_msg_);
 
-  std::cout<<"OPTIMAL CURVE"<<optimal_path.curvature<< std::endl;
+  //visualization::DrawCross(point, 0.5, 0xff0000, global_viz_msg_);
+  //std::cout<< "=================================================" << std::endl;
+
+  //std::cout<<" OPTIMAL CURVE "<<optimal_path.curvature<< " Path Num: " << path_num << std::endl;
+  //std::cout<< "=================================================" << std::endl;
+
   if(optimal_path.free_path_length == -1000)
   {
     exit(0);
@@ -1084,7 +1109,7 @@ void Navigation::Run() {
 
   // find best path based predicted location
   
-  if(found_path){
+  if(found_path || found_target){
     //std::cout<<"Run(): Reached Destination - Navigation is complete!!!" << std::endl;
     ros::Duration(0.01).sleep();
   }
@@ -1095,8 +1120,11 @@ void Navigation::Run() {
     Node carrot = findTheCarrot(robot_loc_);
 
     Eigen::Vector2f carrot_point = rotateMaptoBase.transpose()*(carrot.loc - robot_loc_);
+    std::cout << "Carrot : " << carrot_point << std::endl;
+    std::cout << "Carrot Global : " << carrot.loc << std::endl;
+    visualization::DrawCross(carrot.loc, 1, 0x0000FF,local_viz_msg_);
 
-    best_path= find_optimal_path(40, -2.02, carrot_point);
+    best_path= find_optimal_path(20, -2.02, carrot_point);
 
     // decide wether to speed up stay the same or slow down based on distance to target
     updateSpeed(best_path);

@@ -277,7 +277,8 @@ void drawOpenList(amrl_msgs::VisualizationMsg &msg);
     Eigen::Matrix2f rotateMaptoBase;
     // Map of the environment.
     vector_map::VectorMap map_;
-    bool found_path;  
+    bool found_path;
+    bool found_target; 
   /*****************************************************/
 
 };
